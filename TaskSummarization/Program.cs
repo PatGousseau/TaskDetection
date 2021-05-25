@@ -27,7 +27,7 @@ namespace TaskSummarization
 
 
 
-            List <List<string>> data = new List<List<string>>();
+            List<List<string>> data = new List<List<string>>();
             data.Add(a);
             data.Add(b);
             data.Add(c);
@@ -42,15 +42,16 @@ namespace TaskSummarization
             data.Add(l);
             //data.Add(temp1);
 
-            DataCleaner cleaner = new DataCleaner();
-            List<Dictionary<string, int>> cleaned = cleaner.createBagOfWords(cleaner.clean(data));
+            BagOfWords bag = new BagOfWords(data,0.6);
+            
 
 
-            foreach(Dictionary<string, int> dict in cleaned)
+            foreach(Dictionary<string, int> dict in bag.getBag())
             {
-                List<KeyValuePair<string, int>> topWords = cleaner.getImportantWords(dict, (float)0.6);
-                foreach (KeyValuePair<string, int> entry in topWords)
+                
+                foreach (KeyValuePair<string, int> entry in dict)
                 {
+
                     Console.WriteLine(entry.Key + ": " + entry.Value);
                 }
                 Console.WriteLine("----------------");

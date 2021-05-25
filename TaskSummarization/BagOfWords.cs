@@ -12,10 +12,23 @@ using System.Web.Razor.Tokenizer;
 namespace TaskSummarization
 
 {
-        class DataCleaner
+        class BagOfWords
         {
 
-        MLContext context = new MLContext();
+        private List<Dictionary<string, int>> bag;
+        private double topPercentile;
+
+        public BagOfWords(List<List<string>> windowTitles, double topPercentile)
+        {
+            this.topPercentile = topPercentile;
+            this.bag = createBagOfWords(windowTitles);
+  
+        }
+
+        public List<Dictionary<string, int>> getBag()
+        {
+            return this.bag;
+        }
 
         /// <summary>
         /// Cleans data set 
@@ -40,7 +53,7 @@ namespace TaskSummarization
                     cleanedText.Add(cleanedTimeBlock);
 
                 }
-            test();
+           // test();
 
             return cleanedText;
             }
@@ -97,7 +110,7 @@ namespace TaskSummarization
             private string[] tokenize(string text)
             {
 
-                
+                MLContext context = new MLContext();
                 var emptyData = new List<TextData>();
                 var data = context.Data.LoadFromEnumerable(emptyData);
 
@@ -120,12 +133,14 @@ namespace TaskSummarization
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public List<Dictionary<string, int>> createBagOfWords(List<List<List<string>>> data)
+        public List<Dictionary<string, int>> createBagOfWords(List<List<string>> data)
         {
+
+            List<List<List<string>>> cleanedData = clean(data);
 
             List<Dictionary<string, int>> bagsOfWords = new List<Dictionary<string, int>>();
 
-            foreach(List<List<string>> timeBlock in data)
+            foreach(List<List<string>> timeBlock in cleanedData)
             {
                 Dictionary<string, int> bag = new Dictionary<string, int>();
                 foreach(List<string> windowTitles in timeBlock)
@@ -142,8 +157,10 @@ namespace TaskSummarization
                         }
                     }
                 }
-                bagsOfWords.Add(bag);
+
+                bagsOfWords.Add(getImportantWords(bag));
             }
+
             return bagsOfWords;
         }
 
@@ -153,17 +170,17 @@ namespace TaskSummarization
         /// <param name="bagOfWords"></param>
         /// /// <param name="topPercentile"></param>
         /// <returns></returns>
-        public List<KeyValuePair<string, int>> getImportantWords(Dictionary<string,int> bagOfWords, float topPercentile)
+        public Dictionary<string, int> getImportantWords(Dictionary<string,int> bagOfWords)
         {
             var importantWords = bagOfWords.ToList();
 
             importantWords.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
 
             int upperBound = (int)(importantWords.Count * (1 - topPercentile));
-
+            Console.WriteLine(topPercentile);
             importantWords.RemoveRange(0, upperBound);
-
-            return importantWords;
+            
+            return importantWords.ToDictionary(x => x.Key, x => x.Value);
         }
             
 
