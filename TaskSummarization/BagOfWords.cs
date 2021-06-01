@@ -5,80 +5,72 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Razor.Tokenizer; 
+using System.Text.RegularExpressions;
 
 namespace TaskSummarization
 
 {
-        class BagOfWords
-        {
+    class BagOfWords
+    {
 
-        private List<Dictionary<string, int>> bag;
+        private Dictionary<string, int> bag;
         private double topPercentile;
 
-        public BagOfWords(List<List<string>> windowTitles, double topPercentile)
+        public BagOfWords(List<string> windowTitles, double topPercentile)
         {
             this.topPercentile = topPercentile;
-            this.bag = createBagOfWords(windowTitles);
-  
+            createBagOfWords(windowTitles);
+
         }
 
-        public List<Dictionary<string, int>> getBag()
-        {
-            return this.bag;
-        }
+
 
         /// <summary>
         /// Cleans data set 
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public List<List<List<string>>> clean(List<List<string>> data)
+        public List<List<string>> clean(List<string> data)
+        {
+            List<List<string>> cleanedText = new List<List<string>>(); // List of lists of tokens
+
+            foreach (string windowTitle in data)
             {
-                List<List<List<string>>> cleanedText = new List<List<List<string>>>();
+                // Tokenize, remove stop words, stem and remove non english words
+                List<string> cleanedWindowTitle = removeNonEnglishWordsAndStem(tokenize(windowTitle)); // List of tokens based off the window title
+                cleanedText.Add(cleanedWindowTitle);
 
-                foreach (List<string> timeBlock in data)
-                {
-
-                    List<List<string>> cleanedTimeBlock = new List<List<string>>();
-                    foreach (string windowTitle in timeBlock)
-                    {
-                        // tokenize, remove stop words, stem and remove non english words
-                        List<string> cleanedWindowTitle = removeNonEnglishWordsAndStem(tokenize(windowTitle)); // list of tokens based off the window title
-                        cleanedTimeBlock.Add(cleanedWindowTitle);
-                        
-                    }
-                    cleanedText.Add(cleanedTimeBlock);
-
-                }
-           // test();
-
-            return cleanedText;
             }
 
-        public void test()
-        {
-            //List<List<string>> list = Queries.GetWindowTitles(60, _date);
-            string filePath = @"C:\Users\pcgou\OneDrive\Documents\Work\test.txt";
-
-            //StreamWriter writer = new StreamWriter(filePath);
-            //writer.WriteLine("testing");
-
-            File.WriteAllText(filePath, "testingtesting");
-
-            //foreach(List<string> timeBlock in list)
-            //{
-            //    foreach(string title in timeBlock)
-            //    {
-            //        await File.WriteAllTextAsync(filePath, title);
-            //        File.WriteAllText(filePath, "test");
-            //    }
-            //}
-
-
+            return cleanedText;
         }
+
+        /// <summary>
+        /// Addes a bag of words to this
+        /// </summary>
+        /// <param name="newBag"></param>
+        /// <returns></returns>
+        public void addWords(BagOfWords newBag)
+        {
+
+            Dictionary<string, int> toAdd = newBag.getBag();
+            foreach (KeyValuePair<string, int> token in toAdd)
+            {
+                if (bag.ContainsKey(token.Key))
+                {
+                    bag[token.Key] = bag[token.Key] + toAdd[token.Key];
+                }
+                else
+                {
+                    bag.Add(token.Key, token.Value);
+                }
+            }
+            removeInfrequentWords();
+        }
+
+
+
+
 
 
         /// <summary>
@@ -87,112 +79,113 @@ namespace TaskSummarization
         /// <param name="words"></param>
         /// <returns></returns>
         private List<string> removeNonEnglishWordsAndStem(string[] words)
+        {
+            EnglishStemmer stemmer = new EnglishStemmer();
+            Hunspell hunspell = new Hunspell("en_us.aff", "en_us.dic");
+            List<string> englishWords = new List<string>();
+
+            foreach (string word in words)
             {
-                EnglishStemmer stemmer = new EnglishStemmer();
-                Hunspell hunspell = new Hunspell("en_us.aff", "en_us.dic");
-                List<string> englishWords = new List<string>();
-           
-                foreach(string word in words)
+                if (!Regex.IsMatch(word.ToLower(), "google") && !Regex.IsMatch(word.ToLower(), "search")) // remove google search
                 {
-                    if(hunspell.Spell(word)) // if word is a correct English word
+                    if (hunspell.Spell(word) && !Regex.IsMatch(word, @"^\d+$")) // If word is a correct English word
                     {
-                       englishWords.Add(stemmer.Stem(word)); // add the stem of the word
+                        englishWords.Add(stemmer.Stem(word)); // Add the stem of the word
                     }
                 }
-                return englishWords;
             }
+            return englishWords;
+        }
 
-            /// <summary>
-            /// Tokenizes and removes all stop words
-            /// </summary>
-            /// <param name="text"></param>
-            /// <returns></returns>
-            private string[] tokenize(string text)
-            {
+        /// <summary>
+        /// Tokenizes and removes all stop words
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        private string[] tokenize(string text)
+        {
 
-                MLContext context = new MLContext();
-                var emptyData = new List<TextData>();
-                var data = context.Data.LoadFromEnumerable(emptyData);
+            MLContext context = new MLContext();
+            var emptyData = new List<TextData>();
+            var data = context.Data.LoadFromEnumerable(emptyData);
 
-                var tokenization = context.Transforms.Text.TokenizeIntoWords("Tokens", "Text", separators: new[] { ' ', '.', ',', '-','_' })
-                    .Append(context.Transforms.Text.RemoveDefaultStopWords("Tokens", "Tokens",
-                        Microsoft.ML.Transforms.Text.StopWordsRemovingEstimator.Language.English));
+            var tokenization = context.Transforms.Text.TokenizeIntoWords("Tokens", "Text", separators: new[] { ' ', ',', '-', '_' })
+                .Append(context.Transforms.Text.RemoveDefaultStopWords("Tokens", "Tokens",
+                    Microsoft.ML.Transforms.Text.StopWordsRemovingEstimator.Language.English));
 
-                var stopWordsModel = tokenization.Fit(data);
+            var stopWordsModel = tokenization.Fit(data);
 
-                var engine = context.Model.CreatePredictionEngine<TextData, TextTokens>(stopWordsModel);
+            var engine = context.Model.CreatePredictionEngine<TextData, TextTokens>(stopWordsModel);
 
-                var newText = engine.Predict(new TextData { Text = text });
+            var newText = engine.Predict(new TextData { Text = text });
 
-                return newText.Tokens;
+            return newText.Tokens;
 
-            }
+        }
 
         /// <summary>
         /// Creates a list of bags of words
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public List<Dictionary<string, int>> createBagOfWords(List<List<string>> data)
+        public void createBagOfWords(List<string> data)
         {
 
-            List<List<List<string>>> cleanedData = clean(data);
+            List<List<string>> cleanedData = clean(data);
+            this.bag = new Dictionary<string, int>();
 
-            List<Dictionary<string, int>> bagsOfWords = new List<Dictionary<string, int>>();
-
-            foreach(List<List<string>> timeBlock in cleanedData)
+            foreach (List<string> windowTitle in cleanedData)
             {
-                Dictionary<string, int> bag = new Dictionary<string, int>();
-                foreach(List<string> windowTitles in timeBlock)
+                foreach (string token in windowTitle)
                 {
-                    foreach(string token in windowTitles)
+
+                    if (bag.ContainsKey(token))
                     {
-                        
-                        if(bag.ContainsKey(token))
-                        {
-                            bag[token] = bag[token] + 1;
-                        } else
-                        {
-                            bag.Add(token, 1);
-                        }
+                        bag[token] = bag[token] + 1;
+                    }
+                    else
+                    {
+                        bag.Add(token, 1);
                     }
                 }
-
-                bagsOfWords.Add(getImportantWords(bag));
             }
-
-            return bagsOfWords;
+            removeInfrequentWords();
         }
 
         /// <summary>
         /// Deletes the least occuring words based on topPercentile
         /// </summary>
-        /// <param name="bagOfWords"></param>
-        /// /// <param name="topPercentile"></param>
+        /// <param name="bagOfWords"></param>>
         /// <returns></returns>
-        public Dictionary<string, int> getImportantWords(Dictionary<string,int> bagOfWords)
+        public void removeInfrequentWords()
         {
-            var importantWords = bagOfWords.ToList();
+            var importantWords = bag.ToList();
 
             importantWords.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
 
             int upperBound = (int)(importantWords.Count * (1 - topPercentile));
-            Console.WriteLine(topPercentile);
+
             importantWords.RemoveRange(0, upperBound);
-            
-            return importantWords.ToDictionary(x => x.Key, x => x.Value);
+            this.bag = importantWords.ToDictionary(x => x.Key, x => x.Value);
+
         }
-            
+
+        public Dictionary<string, int> getBag()
+        {
+            return this.bag;
+        }
 
 
-            private class TextData
-            {
-                public string Text { get; set; }
-            }
 
-            private class TextTokens : TextData
-            {
-                public string[] Tokens { get; set; }
-            }
+
+        private class TextData
+        {
+            public string Text { get; set; }
+        }
+
+        private class TextTokens : TextData
+        {
+            public string[] Tokens { get; set; }
+        }
     }
 }
