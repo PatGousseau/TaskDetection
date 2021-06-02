@@ -70,9 +70,6 @@ namespace TaskSummarization
 
 
 
-
-
-
         /// <summary>
         /// Removes non English words and stems each word
         /// </summary>
@@ -124,7 +121,7 @@ namespace TaskSummarization
         }
 
         /// <summary>
-        /// Creates a list of bags of words
+        /// Creates bag of words
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
@@ -174,8 +171,6 @@ namespace TaskSummarization
         {
             return this.bag;
         }
-
-
 
 
         private class TextData

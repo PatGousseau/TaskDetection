@@ -10,9 +10,7 @@ namespace TaskSummarization
     class Program
     {
 
-         
-
-
+        
         static void Main(string[] args)
         {
 
@@ -20,7 +18,7 @@ namespace TaskSummarization
             double topPercentile = 0.4;
 
             List<List<string>> data = getTestData(numSecs);
-            Summarizer summarizer = new Summarizer();
+            Summarizer summarizer = new Summarizer(numSecs);
 
             foreach(List<string> titles in data)
             {
@@ -29,26 +27,6 @@ namespace TaskSummarization
 
             }
             summarizer.printData();
-
-            
- 
-
-            //List<Dictionary<string, int>> bags = summarizer.getBags().getBags();
-            //foreach (Dictionary<string, int> dict in bags)
-            //{
-
-            //    foreach (KeyValuePair<string,int> token in dict)
-            //    {
-            //        Console.WriteLine(token.Key +": " + token.Value);
-
-            //    }
-            //    Console.WriteLine("----------------------------");
-            //}
-            //Console.ReadLine();
-
-
-
-
         }
 
         public static List<List<string>> getTestData(int numSecs)
@@ -56,14 +34,13 @@ namespace TaskSummarization
 
             double currentTime = 0;
             List<List<string>> titles = new List<List<string>>();
-            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\P01\appdata_fixed.csv";
+            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\P04\appdata_fixed.csv";
             try
             {
                 string[] lines =  File.ReadAllLines(path);
                 for (int i = 1; i < lines.Length; i++)
                 {
                     string[] items = lines[i].Split(',');
-                    //double x = Convert.ToDouble(items[1]);
                     double duration = Convert.ToDouble(items[1]) - Convert.ToDouble(items[0]);
 
                     int startBlock = (int)(currentTime / numSecs); // block of time in which the window title began
@@ -86,22 +63,16 @@ namespace TaskSummarization
 
                             titles[j].Add(items[3]);
                         }
-
                     }
-
-
-
-
                 }
 
-
-
-                } catch (Exception e)
+            } catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
 
             int seconds = numSecs;
+            
             foreach (List<string> list in titles)
             {
                 TimeSpan time = TimeSpan.FromSeconds(seconds);
@@ -116,7 +87,6 @@ namespace TaskSummarization
                 Console.WriteLine("---------------------------- " + hours);
                 
             }
-           // Console.ReadLine();
 
             return titles;
 
