@@ -14,19 +14,24 @@ namespace TaskSummarization
         static void Main(string[] args)
         {
 
-            int numSecs = 90;
-            double topPercentile = 0.4;
+                int numSecs = 120;
+            //    double topPercentile = 0.4;
 
-            List<List<string>> data = getTestData(numSecs);
-            Summarizer summarizer = new Summarizer(numSecs);
+            //    List<List<string>> data = getTestData(numSecs);
+            //    Summarizer summarizer = new Summarizer(numSecs);
 
-            foreach(List<string> titles in data)
-            {
-                BagOfWords bag = new BagOfWords(titles, topPercentile);
-                summarizer.addBag(bag);
+            //    foreach(List<string> titles in data)
+            //    {
+            //        BagOfWords bag = new BagOfWords(titles, topPercentile);
+            //        summarizer.addBag(bag);
 
-            }
-            summarizer.printData();
+            //    }
+            //    summarizer.printData();
+
+
+
+            Tester tester = new Tester(numSecs);
+            tester.getCorrectData();
         }
 
         public static List<List<string>> getTestData(int numSecs)
@@ -38,7 +43,7 @@ namespace TaskSummarization
             try
             {
                 string[] lines =  File.ReadAllLines(path);
-                for (int i = 1; i < lines.Length; i++)
+                for (int i = 1; i < 100; i++)
                 {
                     string[] items = lines[i].Split(',');
                     double duration = Convert.ToDouble(items[1]) - Convert.ToDouble(items[0]);

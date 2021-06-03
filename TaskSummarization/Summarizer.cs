@@ -16,33 +16,38 @@ namespace TaskSummarization
         private List<KeyValuePair<BagOfWords,int>> bags; // KeyPair consists of bag of words and task number     
         private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
         private double topPercentile = 0.4; // The top percentage of most frequent words that is kept in the bag of words
-        private double similarityThreshold = 0.3; // Minimum cosine similarity for two bags of words to be considered alike
+        private double similarityThreshold = 0.5; // Minimum cosine similarity for two bags of words to be considered alike
         private int numTasks = 0;
-        public List<int> times = new List<int>();
+        private List<int> times = new List<int>();
         private int totalTime = 0;
         private int numSecs;
        
 
         public Summarizer(int numSecs)
         {
+            
             this.bags = new List<KeyValuePair<BagOfWords, int>> ();
             this.numSecs = numSecs;
-            times.Add(0);
+           // times.Add(0);
         }
 
         public void addBag(BagOfWords newBag) 
         {
+            
             // If bag is empty
-            if(bags.Count == 0)
+            if (bags.Count == 0)
             {
+                
                 numTasks++;
                 bags.Add(new KeyValuePair<BagOfWords, int>(newBag, numTasks));
                 times.Add(numSecs);
                 
             } else
             {
+                
+
                 // Collapse if preceding bag is similar to the new one
-                if(similarBags(bags[bags.Count - 1].Key,newBag))
+                if (similarBags(bags[bags.Count - 1].Key,newBag))
                 {
                     bags[bags.Count - 1].Key.addWords(newBag);
                     times[times.Count - 1] = times[times.Count - 1] + numSecs;
@@ -57,7 +62,8 @@ namespace TaskSummarization
                     // Check if newBag represents the same task as a previous bag
                     foreach (KeyValuePair<BagOfWords,int> bag in bags)
                     {
-                        if(similarBags(bag.Key,newBag)) {
+                        
+                        if (similarBags(bag.Key,newBag)) {
                             newTaskNum = bag.Value;
                             isNewTask = false;
                             break;
@@ -68,8 +74,16 @@ namespace TaskSummarization
                         numTasks++;
                         newTaskNum = numTasks;
                     }
-                    bags.Add(new KeyValuePair<BagOfWords, int>(newBag, newTaskNum));
-                    times.Add(numSecs + totalTime);
+                    if (bags[bags.Count - 1].Value == newTaskNum)
+                    {
+                        bags[bags.Count - 1].Key.addWords(newBag);
+                        times[times.Count - 1] = times[times.Count - 1] + numSecs;
+                    }
+                    else
+                    {
+                        bags.Add(new KeyValuePair<BagOfWords, int>(newBag, newTaskNum));
+                        times.Add(numSecs + totalTime);
+                    }
                 }
             }
             totalTime += numSecs;
@@ -107,25 +121,35 @@ namespace TaskSummarization
             int vecSize = vocabulary.VectorDimensionsCount;
             double[] vector = new double[vecSize];
             int numTokens = 0;
-
+            //var words = vocabulary.Words;
+           // List<string> toDelete = new List<string>();
+            
 
             foreach (KeyValuePair<string, int> token in bag)
             {
                 try
                 {
-
-                    double[] tokenVector = vocabulary.GetRepresentationFor(token.Key).NumericVector.ToDouble();
-                    numTokens++;
-                    for (int i = 0; i < vecSize; i++)
-                    {
-                        vector[i] += tokenVector[i];
-                    }
+                   // if (vocabulary.ContainsWord(token.Key))
+                   // {
+                        
+                        double[] tokenVector = vocabulary.GetRepresentationFor(token.Key).NumericVector.ToDouble();
+                        numTokens++;
+                        for (int i = 0; i < vecSize; i++)
+                        {
+                            vector[i] += tokenVector[i];
+                        }
+                   // } else
+                   // {
+                        
+                       // bag.Remove(token.Key);
+                   // }
 
                 }
                 catch
                 {
                     // Do nothing for unkown words
-
+                  //  toDelete.Add(token.Key);
+                   // Console.WriteLine("                                     no good: " + token.Key);
                 }
             }
 
@@ -135,6 +159,11 @@ namespace TaskSummarization
                 vector[i] /= numTokens;
             }
 
+            //for (int j = 0; j < toDelete.Count; j++)
+            //{
+            //    bag.Remove(toDelete[j]);
+            //}
+
             return vector;
 
         }
@@ -142,6 +171,11 @@ namespace TaskSummarization
         public List<KeyValuePair<BagOfWords, int>> getBags()
         {
             return this.bags;
+        }
+
+        public List<int> getTimes()
+        {
+            return this.times;
         }
 
         public void printData()
