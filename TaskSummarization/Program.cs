@@ -31,6 +31,7 @@ namespace TaskSummarization
 
 
             Tester tester = new Tester(numSecs);
+           
             float ans = tester.compare();
             Console.WriteLine("answer: " + ans);
             Console.ReadLine();

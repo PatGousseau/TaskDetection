@@ -34,6 +34,22 @@ namespace TaskSummarization
 
             }
             summarizer.printData();
+
+        }
+
+        private int getBagNumber(int startTime, int endTime)
+        {
+            List<int[]> taskSwitchTimes = summarizer.getTimes();
+            int bagNum = 0;
+            foreach(int[] task in taskSwitchTimes)
+            {
+                if(task[0] <= startTime && task[1] >= endTime)
+                {
+                    return bagNum;
+                }
+                bagNum++;
+            }
+            return -1;
         }
 
         public float compare()
@@ -42,50 +58,51 @@ namespace TaskSummarization
             float totalPoints = 0;
             float ans = 0;
 
-            List<int> taskSwitchTimes = summarizer.getTimes();
+            List<int[]> taskSwitchTimes = summarizer.getTimes();
             List<KeyValuePair<BagOfWords, int>> bags = summarizer.getBags();
             List<KeyValuePair<int[], int>> correctData = getCorrectData();
             int curTime = 0; // Current time
-            
 
-            for(int i = 1; i < taskSwitchTimes.Count; i++)
+            // loop through correctData
+            foreach(KeyValuePair<int[], int> correctTask in correctData)
             {
-                int upperBound = taskSwitchTimes[i]; // End time of the current task
-
-                while((curTime + numSecs) <= upperBound)
+                int upperBound = correctTask.Key[1];
+                var freq = new Dictionary<int, int>(); // frequency of each task number
+                int index = 0;
+                while ((curTime + numSecs) <= upperBound)
                 {
-                    int correctTaskNum = getTaskNumber(curTime, curTime + numSecs, correctData);
-                    int end = curTime + numSecs;
-
-                    if (correctTaskNum > 0) // If it is not a transition period
-                    {
-                        if (bags[i - 1].Value == correctTaskNum)
+                    int bagNum = getBagNumber(curTime, curTime + numSecs);
+                    if (bagNum >= 0) {
+                        int endTime = curTime + numSecs;
+                        Console.WriteLine(curTime + " to " + endTime + " : " + getBagNumber(curTime, curTime + numSecs));
+                        int taskNum = bags[bagNum].Value;
+                        if (freq.ContainsKey(taskNum))
                         {
-
-                            Console.WriteLine("correct from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
-                            correctPoints++;
-                        }
-                        else
+                            freq[taskNum] = freq[taskNum] + 1;
+                        } else
                         {
-                            Console.WriteLine("wrong from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
+                            freq.Add(taskNum, 1);
                         }
+
                         totalPoints++;
-                    } else
-                    {
-                        Console.WriteLine("transition from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
                     }
- 
-                    curTime += numSecs; // Go to next time block
+                    index++;
+                    curTime += numSecs;
                 }
+                curTime += numSecs;
+                if (freq.Count > 0)
+                {
+                    correctPoints += freq.Values.Max();
+                }
+                Console.WriteLine(correctPoints + " / " + totalPoints);
             }
-            
-                double x = correctPoints / totalPoints;
-            Console.WriteLine(correctPoints + " / " + totalPoints);
-           // Console.WriteLine(x);
-            ans = correctPoints / totalPoints;
+             ans = correctPoints / totalPoints;
 
             return ans;
         }
+
+
+
 
         private int getTaskNumber(int startTime, int endTime, List<KeyValuePair<int[], int>> correctData)
         {
@@ -102,13 +119,6 @@ namespace TaskSummarization
 
 
         }
-
-
-
-
-
-
-
 
 
         public List<KeyValuePair<int[], int>> getCorrectData()
@@ -163,7 +173,7 @@ namespace TaskSummarization
             try
             {
                 string[] lines = File.ReadAllLines(path);
-                for (int i = 1; i < 100; i++)
+                for (int i = 1; i < lines.Length; i++)
                 {
                     string[] items = lines[i].Split(',');
                     double duration = Convert.ToDouble(items[1]) - Convert.ToDouble(items[0]);
@@ -217,20 +227,5 @@ namespace TaskSummarization
             return titles;
 
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
 }
