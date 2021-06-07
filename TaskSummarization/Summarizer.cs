@@ -28,7 +28,7 @@ namespace TaskSummarization
             
             this.bags = new List<KeyValuePair<BagOfWords, int>> ();
             this.numSecs = numSecs;
-           // times.Add(0);
+            times.Add(0);
         }
 
         public void addBag(BagOfWords newBag) 
@@ -193,7 +193,7 @@ namespace TaskSummarization
                 }
                 index++;
             }
-            Console.ReadLine();
+           // Console.ReadLine();
         }
 
 

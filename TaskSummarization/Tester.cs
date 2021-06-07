@@ -17,7 +17,7 @@ namespace TaskSummarization
         {
             this.numSecs = numSecs;
 
-            //init();
+            init();
         }
 
         private void init()
@@ -33,44 +33,55 @@ namespace TaskSummarization
                 summarizer.addBag(bag);
 
             }
+            summarizer.printData();
         }
 
         public float compare()
         {
-            int correctPoints = 0;
-            int totalPoints = 0;
-            int ans = 0;
+            float correctPoints = 0;
+            float totalPoints = 0;
+            float ans = 0;
 
-            List<int> times = summarizer.getTimes();
+            List<int> taskSwitchTimes = summarizer.getTimes();
             List<KeyValuePair<BagOfWords, int>> bags = summarizer.getBags();
             List<KeyValuePair<int[], int>> correctData = getCorrectData();
             int curTime = 0; // Current time
             
 
-            for(int i = 0; i < times.Count; i++)
+            for(int i = 1; i < taskSwitchTimes.Count; i++)
             {
-                int upperBound = times[i]; // End time of the current task
+                int upperBound = taskSwitchTimes[i]; // End time of the current task
 
                 while((curTime + numSecs) <= upperBound)
                 {
                     int correctTaskNum = getTaskNumber(curTime, curTime + numSecs, correctData);
+                    int end = curTime + numSecs;
 
-                    if (bags[i].Value == correctTaskNum)
+                    if (correctTaskNum > 0) // If it is not a transition period
                     {
-                        correctPoints++;
-                    }
-                    
-                                                                     
-                    curTime += numSecs; // Go to next time block
-                    
-                    if(correctTaskNum > 0) // If it is not a transition period
-                    {
+                        if (bags[i - 1].Value == correctTaskNum)
+                        {
+
+                            Console.WriteLine("correct from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
+                            correctPoints++;
+                        }
+                        else
+                        {
+                            Console.WriteLine("wrong from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
+                        }
                         totalPoints++;
+                    } else
+                    {
+                        Console.WriteLine("transition from " + curTime + " to " + end + " - Output: " + bags[i - 1].Value + " answer: " + correctTaskNum);
                     }
-                    
+ 
+                    curTime += numSecs; // Go to next time block
                 }
             }
-
+            
+                double x = correctPoints / totalPoints;
+            Console.WriteLine(correctPoints + " / " + totalPoints);
+           // Console.WriteLine(x);
             ans = correctPoints / totalPoints;
 
             return ans;
