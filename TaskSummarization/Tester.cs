@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 
 
 namespace TaskSummarization
@@ -16,20 +15,25 @@ namespace TaskSummarization
         private Summarizer summarizer;
         private List<Task> tasks;
         private List<KeyValuePair<int[], int>> correctData;
+
         public Tester(int numSecs, double topPercentile, double similarityThreshold)
         {
             this.numSecs = numSecs;
             this.topPercentile = topPercentile;
             this.similarityThreshold = similarityThreshold;
 
-            init();
+            initializeSummarizer();
             
             this.tasks = summarizer.getTasks();
             this.correctData = getCorrectData();
 
         }
 
-        private void init()
+        /// <summary>
+        /// Runs the algorithm
+        /// </summary>
+        /// <returns></returns>
+        private void initializeSummarizer()
         {
 
             List<List<string>> data = getInputData(numSecs);
@@ -45,6 +49,10 @@ namespace TaskSummarization
 
         }
 
+        /// <summary>
+        /// Tests the algorithm
+        /// </summary>
+        /// <returns></returns>
         public float test()
         {
 
@@ -74,6 +82,13 @@ namespace TaskSummarization
         }
 
 
+        /// <summary>
+        /// Returns whether or not the segment from startTime to endTime in 
+        /// the correct data is homogenous (comprised of a single task)
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
         private bool isHomogeneous(int startTime, int endTime)
         {
 
@@ -90,6 +105,10 @@ namespace TaskSummarization
         }
 
 
+        /// <summary>
+        /// Fetches ground truth data
+        /// </summary>
+        /// <returns></returns>
         public List<KeyValuePair<int[], int>> getCorrectData()
         {
             string format = "g";
@@ -133,6 +152,11 @@ namespace TaskSummarization
             return truth;
         }
 
+        /// <summary>
+        /// Fetches testing data
+        /// </summary>
+        /// <param name="numSecs"></param>
+        /// <returns></returns>
         public static List<List<string>> getInputData(int numSecs)
         {
 

@@ -12,26 +12,23 @@ namespace TaskSummarization
         
         private List<Task> tasks; // KeyPair consists of bag of words and task number     
         private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
-       // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
+        //private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
         private double similarityThreshold; // Minimum cosine similarity for two bags of words to be considered alike
         private int numTasks = 0;
-
         private int totalTime = 0;
         private int numSecs;
        
 
         public Summarizer(int numSecs, double similarityThreshold)
-        {
-            
+        {           
             this.tasks = new List<Task> ();
             this.numSecs = numSecs;
             this.similarityThreshold = similarityThreshold;
-        //    times.Add(0);
         }
 
 
         /// <summary>
-        /// Adds a bag of words to the list of task segments
+        /// Adds task to the list of task segments
         /// </summary>
         /// <param name="newTask"></param>
         /// <returns></returns>
@@ -96,10 +93,10 @@ namespace TaskSummarization
 
 
         /// <summary>
-        /// Returns whether or not the bags are similar
+        /// Returns whether or not the tasks are similar
         /// </summary>
-        /// <param name="bag1"></param>
-        /// <param name="bag2"></param>
+        /// <param name="task1"></param>
+        /// <param name="task2"></param>
         /// <returns></returns>
         private Boolean similarTasks(Task task1, Task task2)
         {
@@ -126,7 +123,7 @@ namespace TaskSummarization
             {
                 TimeSpan time = TimeSpan.FromSeconds(task.getStartTime());
                 string hours = time.ToString(@"hh\:mm\:ss");
-                //
+                
                 Console.WriteLine("---------------------------- Task: " + task.getTaskNum() + ", t = " + hours);
                 foreach (KeyValuePair<string, int> token in task.getBag())
                 {

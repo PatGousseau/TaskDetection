@@ -34,7 +34,11 @@ namespace TaskSummarization
         }
 
 
-
+        /// <summary>
+        /// Creates and initalizes average word2vec vector for task
+        /// </summary>
+        /// <param name="newTask"></param>
+        /// <returns></returns>
         private void createAverageVector()
         {
             var vocabulary = new Word2vec.Tools.Word2VecBinaryReader().Read(path);
