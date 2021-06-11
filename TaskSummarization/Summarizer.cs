@@ -1,9 +1,6 @@
 ﻿using Accord.Math;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace TaskSummarization
@@ -14,26 +11,31 @@ namespace TaskSummarization
 
         
         private List<KeyValuePair<BagOfWords,int>> bags; // KeyPair consists of bag of words and task number     
-        private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
-        private double topPercentile = 0.4; // The top percentage of most frequent words that is kept in the bag of words
-        private double similarityThreshold = 0.5; // Minimum cosine similarity for two bags of words to be considered alike
+        private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
+       // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
+        private double similarityThreshold; // Minimum cosine similarity for two bags of words to be considered alike
         private int numTasks = 0;
        // private List<int> times = new List<int>();
-        public List<int[]> time1 = new List<int[]>();
+        public List<int[]> times = new List<int[]>();
         private int totalTime = 0;
         private int numSecs;
        
 
-        public Summarizer(int numSecs)
+        public Summarizer(int numSecs, double similarityThreshold)
         {
             
             this.bags = new List<KeyValuePair<BagOfWords, int>> ();
             this.numSecs = numSecs;
+            this.similarityThreshold = similarityThreshold;
         //    times.Add(0);
         }
 
- 
 
+        /// <summary>
+        /// Adds a bag of words to the list of task segments
+        /// </summary>
+        /// <param name="newBag"></param>
+        /// <returns></returns>
         public void addBag(BagOfWords newBag) 
         {
             
@@ -44,7 +46,7 @@ namespace TaskSummarization
                 numTasks++;
                 bags.Add(new KeyValuePair<BagOfWords, int>(newBag, numTasks));
              //   times.Add(numSecs);
-                time1.Add(new int[] { 0, numSecs });
+                times.Add(new int[] { 0, numSecs });
             } else
             {
                 
@@ -54,12 +56,11 @@ namespace TaskSummarization
                 {
                     bags[bags.Count - 1].Key.addWords(newBag);
                 //    times[times.Count - 1] = times[times.Count - 1] + numSecs;
-                    time1[time1.Count - 1][1] = time1[time1.Count - 1][1] + numSecs;
+                    times[times.Count - 1][1] = times[times.Count - 1][1] + numSecs;
                     
                 } else
                 {
-                   
-                    
+                                       
                     Boolean isNewTask = true;
                     int newTaskNum = -1; // Task number for newBag
 
@@ -73,22 +74,25 @@ namespace TaskSummarization
                             break;
                         }
                     }
+
                     if(isNewTask)
                     {
                         numTasks++;
                         newTaskNum = numTasks;
                     }
+
+                    // If bag is not similar enough to previous bag yet has same task number
                     if (bags[bags.Count - 1].Value == newTaskNum)
                     {
                         bags[bags.Count - 1].Key.addWords(newBag);
                     //    times[times.Count - 1] = times[times.Count - 1] + numSecs;
-                        time1[time1.Count - 1][1] = time1[time1.Count - 1][1] + numSecs;
+                        times[times.Count - 1][1] = times[times.Count - 1][1] + numSecs;
                     }
                     else
                     {
                         bags.Add(new KeyValuePair<BagOfWords, int>(newBag, newTaskNum));
                     //    times.Add(numSecs + totalTime);
-                        time1.Add(new int[] { totalTime, numSecs + totalTime });
+                        times.Add(new int[] { totalTime, numSecs + totalTime });
                     }
                 }
             }
@@ -181,7 +185,7 @@ namespace TaskSummarization
 
         public List<int[]> getTimes()
         {
-            return this.time1;
+            return this.times;
         }
 
         public void printData()
@@ -189,12 +193,13 @@ namespace TaskSummarization
             int index = 0;
             foreach (KeyValuePair<BagOfWords, int> segment in bags)
             {
-                TimeSpan time = TimeSpan.FromSeconds(time1[index][0]);
+                TimeSpan time = TimeSpan.FromSeconds(times[index][0]);
                 string hours = time.ToString(@"hh\:mm\:ss");
-                Console.WriteLine("---------------------------- Task: " + segment.Value + ", t= " + hours);
+             //
+             //Console.WriteLine("---------------------------- Task: " + segment.Value + ", t= " + hours);
                 foreach (KeyValuePair<string, int> token in segment.Key.getBag())
                 {
-                    Console.WriteLine(token.Key + ": " + token.Value);
+                   // Console.WriteLine(token.Key + ": " + token.Value);
 
                 }
                 index++;

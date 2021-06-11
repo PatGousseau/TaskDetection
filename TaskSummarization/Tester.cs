@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace TaskSummarization
 {
@@ -12,20 +11,30 @@ namespace TaskSummarization
     {
 
         private int numSecs;
+        private double topPercentile;
+        private double similarityThreshold;
         private Summarizer summarizer;
-        public Tester(int numSecs)
+        private List<int[]> taskSwitchTimes;
+        private List<KeyValuePair<BagOfWords, int>> bags;
+        private List<KeyValuePair<int[], int>> correctData;
+        public Tester(int numSecs, double topPercentile, double similarityThreshold)
         {
             this.numSecs = numSecs;
+            this.topPercentile = topPercentile;
+            this.similarityThreshold = similarityThreshold;
 
             init();
+            this.taskSwitchTimes = summarizer.getTimes();
+            this.bags = summarizer.getBags();
+            this.correctData = getCorrectData();
+
         }
 
         private void init()
         {
-            double topPercentile = 0.4;
 
             List<List<string>> data = getInputData(numSecs);
-            this.summarizer = new Summarizer(numSecs);
+            this.summarizer = new Summarizer(numSecs,similarityThreshold);
 
             foreach (List<string> titles in data)
             {
@@ -52,70 +61,105 @@ namespace TaskSummarization
             return -1;
         }
 
-        public float compare()
+
+
+        public float test()
         {
+
             float correctPoints = 0;
-            float totalPoints = 0;
-            float ans = 0;
-
-            List<int[]> taskSwitchTimes = summarizer.getTimes();
-            List<KeyValuePair<BagOfWords, int>> bags = summarizer.getBags();
-            List<KeyValuePair<int[], int>> correctData = getCorrectData();
-            int curTime = 0; // Current time
-
-            // loop through correctData
-            foreach(KeyValuePair<int[], int> correctTask in correctData)
+            
+            foreach (int[] time in taskSwitchTimes)
             {
-                int upperBound = correctTask.Key[1];
-                var freq = new Dictionary<int, int>(); // frequency of each task number
-                int index = 0;
-                while ((curTime + numSecs) <= upperBound)
-                {
-                    int bagNum = getBagNumber(curTime, curTime + numSecs);
-                    if (bagNum >= 0) {
-                        int endTime = curTime + numSecs;
-                        Console.WriteLine(curTime + " to " + endTime + " : " + getBagNumber(curTime, curTime + numSecs));
-                        int taskNum = bags[bagNum].Value;
-                        if (freq.ContainsKey(taskNum))
-                        {
-                            freq[taskNum] = freq[taskNum] + 1;
-                        } else
-                        {
-                            freq.Add(taskNum, 1);
-                        }
+                int startSecs = time[0];
+                int endSecs = time[1];
+                TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
+                string startHours = startTime.ToString(@"hh\:mm\:ss");
 
-                        totalPoints++;
-                    }
-                    index++;
-                    curTime += numSecs;
-                }
-                curTime += numSecs;
-                if (freq.Count > 0)
+                TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
+                string endHours = endTime.ToString(@"hh\:mm\:ss");
+
+                if (isHomogeneous(startSecs, endSecs))
                 {
-                    correctPoints += freq.Values.Max();
+                    correctPoints++;
+                    Console.WriteLine("correct from: " + startHours + " to " + endHours); 
+                } else
+                {
+                    Console.WriteLine("wrong from: " + startHours + " to " + endHours);
                 }
-                Console.WriteLine(correctPoints + " / " + totalPoints);
             }
-             ans = correctPoints / totalPoints;
-
+            float ans = correctPoints / taskSwitchTimes.Count;
             return ans;
         }
 
 
 
+        //public float test()
+        //{
+        //    float correctPoints = 0;
+        //    float totalPoints = 0;
+        //    float ans = 0;
 
-        private int getTaskNumber(int startTime, int endTime, List<KeyValuePair<int[], int>> correctData)
+
+        //    int curTime = 0; // Current time
+
+        //    // loop through correctData
+        //    foreach(KeyValuePair<int[], int> correctTask in correctData)
+        //    {
+        //        int upperBound = correctTask.Key[1];
+        //        var freq = new Dictionary<int, int>(); // frequency of each task number
+        //        int index = 0;
+        //        while ((curTime + numSecs) <= upperBound)
+        //        {
+        //            int bagNum = getBagNumber(curTime, curTime + numSecs);
+        //            if (bagNum >= 0) {
+        //                int endTime = curTime + numSecs;
+        //                TimeSpan ctime = TimeSpan.FromSeconds(curTime);
+        //                string chours = ctime.ToString(@"hh\:mm\:ss");
+        //                TimeSpan etime = TimeSpan.FromSeconds(endTime);
+        //                string ehours = etime.ToString(@"hh\:mm\:ss");
+        //              //  Console.WriteLine(chours + " to " + ehours + " : " + bags[bagNum].Value);
+        //                int taskNum = bags[bagNum].Value;
+        //                if (freq.ContainsKey(taskNum))
+        //                {
+        //                    freq[taskNum] = freq[taskNum] + 1;
+        //                } else
+        //                {
+        //                    freq.Add(taskNum, 1);
+        //                }
+
+        //                totalPoints++;
+        //            }
+        //            index++;
+        //            curTime += numSecs;
+        //        }
+        //        curTime += numSecs;
+        //        if (freq.Count > 0)
+        //        {
+        //            correctPoints += freq.Values.Max();
+        //        }
+        //     //   Console.WriteLine(correctPoints + " / " + totalPoints);
+        //    }
+        //     ans = correctPoints / totalPoints;
+
+        //    return ans;
+        //}
+
+
+
+
+        private bool isHomogeneous(int startTime, int endTime)
         {
 
             for(int i = 0; i < correctData.Count; i++)
             {
                 if(startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
                 {
-                    return correctData[i].Value;
+                    //return correctData[i].Value;
+                    return true;
                 }
             }
-            return -1; // transition period
-
+            //return -1; // transition period
+            return false;
 
 
         }
@@ -173,7 +217,7 @@ namespace TaskSummarization
             try
             {
                 string[] lines = File.ReadAllLines(path);
-                for (int i = 1; i < lines.Length; i++)
+                for (int i = 1; i < 100; i++)
                 {
                     string[] items = lines[i].Split(',');
                     double duration = Convert.ToDouble(items[1]) - Convert.ToDouble(items[0]);
@@ -209,20 +253,20 @@ namespace TaskSummarization
 
             int seconds = numSecs;
 
-            foreach (List<string> list in titles)
-            {
-                TimeSpan time = TimeSpan.FromSeconds(seconds);
-                string hours = time.ToString(@"hh\:mm\:ss");
+            //foreach (List<string> list in titles)
+            //{
+            //    TimeSpan time = TimeSpan.FromSeconds(seconds);
+            //    string hours = time.ToString(@"hh\:mm\:ss");
 
-                foreach (string token in list)
-                {
-                    Console.WriteLine(token);
+            //    foreach (string token in list)
+            //    {
+            //        Console.WriteLine(token);
 
-                }
-                seconds += numSecs;
-                Console.WriteLine("---------------------------- " + hours);
+            //    }
+            //    seconds += numSecs;
+            //    Console.WriteLine("---------------------------- " + hours);
 
-            }
+            //}
 
             return titles;
 
