@@ -1,4 +1,5 @@
-﻿using Iveonik.Stemmers;
+﻿using Accord.Math;
+using Iveonik.Stemmers;
 using Microsoft.ML;
 using NHunspell;
 using System;
@@ -10,20 +11,118 @@ using System.Text.RegularExpressions;
 namespace TaskSummarization
 
 {
-    class BagOfWords
+    class Task
     {
 
         private Dictionary<string, int> bag;
-        private double topPercentile;
+        private int taskNum;
+        double[] aveVector;
+        private int startTime;
+        private int endTime;
 
-        public BagOfWords(List<string> windowTitles, double topPercentile)
+
+        private double topPercentile;
+        private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
+        // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
+
+        public Task(List<string> windowTitles, double topPercentile)
         {
             this.topPercentile = topPercentile;
             createBagOfWords(windowTitles);
+            createAverageVector();
 
         }
 
 
+
+        private void createAverageVector()
+        {
+            var vocabulary = new Word2vec.Tools.Word2VecBinaryReader().Read(path);
+            int vecSize = vocabulary.VectorDimensionsCount;
+            double[] vector = new double[vecSize];
+            int numTokens = 0;
+
+            foreach (KeyValuePair<string, int> token in bag)
+            {
+                try
+                {
+                    double[] tokenVector = vocabulary.GetRepresentationFor(token.Key).NumericVector.ToDouble();
+                    numTokens++;
+                    for (int i = 0; i < vecSize; i++)
+                    {
+                        vector[i] += tokenVector[i];
+                    }
+                }
+                catch
+                {
+                    // Do nothing for unkown words
+                }
+            }
+
+            // Divide each entry in vector by the number of tokens to get average
+            for (int i = 0; i < vecSize; i++)
+            {
+                vector[i] /= numTokens;
+            }
+            this.aveVector = vector;
+          
+        }
+
+        /// <summary>
+        /// Addes a bag of words to this
+        /// </summary>
+        /// <param name="newBag"></param>
+        /// <returns></returns>
+        public void collapseTasks(Task newBag, int secondsToAdd)
+        {
+
+            Dictionary<string, int> toAdd = newBag.getBag();
+            foreach (KeyValuePair<string, int> token in toAdd)
+            {
+                if (bag.ContainsKey(token.Key))
+                {
+                    bag[token.Key] = bag[token.Key] + toAdd[token.Key];
+                }
+                else
+                {
+                    bag.Add(token.Key, token.Value);
+                }
+            }
+            endTime += secondsToAdd;
+            removeInfrequentWords();
+            createAverageVector();
+        }
+
+        /// <summary>
+        /// Creates bag of words
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public void createBagOfWords(List<string> data)
+        {
+
+            List<List<string>> cleanedData = clean(data);
+            this.bag = new Dictionary<string, int>();
+
+            foreach (List<string> windowTitle in cleanedData)
+            {
+                foreach (string token in windowTitle)
+                {
+
+                    if (bag.ContainsKey(token))
+                    {
+                        bag[token] = bag[token] + 1;
+                    }
+                    else
+                    {
+                        bag.Add(token, 1);
+                    }
+                }
+            }
+            removeInfrequentWords();
+        }
+
+        #region data cleaning
 
         /// <summary>
         /// Cleans data set 
@@ -44,30 +143,6 @@ namespace TaskSummarization
 
             return cleanedText;
         }
-
-        /// <summary>
-        /// Addes a bag of words to this
-        /// </summary>
-        /// <param name="newBag"></param>
-        /// <returns></returns>
-        public void addWords(BagOfWords newBag)
-        {
-
-            Dictionary<string, int> toAdd = newBag.getBag();
-            foreach (KeyValuePair<string, int> token in toAdd)
-            {
-                if (bag.ContainsKey(token.Key))
-                {
-                    bag[token.Key] = bag[token.Key] + toAdd[token.Key];
-                }
-                else
-                {
-                    bag.Add(token.Key, token.Value);
-                }
-            }
-            removeInfrequentWords();
-        }
-
 
 
         /// <summary>
@@ -121,35 +196,6 @@ namespace TaskSummarization
         }
 
         /// <summary>
-        /// Creates bag of words
-        /// </summary>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        public void createBagOfWords(List<string> data)
-        {
-
-            List<List<string>> cleanedData = clean(data);
-            this.bag = new Dictionary<string, int>();
-
-            foreach (List<string> windowTitle in cleanedData)
-            {
-                foreach (string token in windowTitle)
-                {
-
-                    if (bag.ContainsKey(token))
-                    {
-                        bag[token] = bag[token] + 1;
-                    }
-                    else
-                    {
-                        bag.Add(token, 1);
-                    }
-                }
-            }
-            removeInfrequentWords();
-        }
-
-        /// <summary>
         /// Deletes the least occuring words based on topPercentile
         /// </summary>
         /// <param name="bagOfWords"></param>>
@@ -167,10 +213,47 @@ namespace TaskSummarization
 
         }
 
+        #endregion
+
+
+        #region Getters and Setters
+
         public Dictionary<string, int> getBag()
         {
             return this.bag;
         }
+
+        public void setTaskNum(int number)
+        {
+            this.taskNum = number;
+        }
+
+        public int getTaskNum()
+        {
+            return this.taskNum;
+        }
+
+        public void setTimes(int startTime, int endTime)
+        {
+            this.startTime = startTime;
+            this.endTime = endTime;
+        }
+
+        public double[] getVector()
+        {
+            return this.aveVector;
+        }
+
+        public int getStartTime()
+        {
+            return this.startTime;
+        }
+
+        public int getEndTime()
+        {
+            return this.endTime;
+        }
+        #endregion
 
 
         private class TextData

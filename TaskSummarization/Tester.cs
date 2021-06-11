@@ -14,8 +14,7 @@ namespace TaskSummarization
         private double topPercentile;
         private double similarityThreshold;
         private Summarizer summarizer;
-        private List<int[]> taskSwitchTimes;
-        private List<KeyValuePair<BagOfWords, int>> bags;
+        private List<Task> tasks;
         private List<KeyValuePair<int[], int>> correctData;
         public Tester(int numSecs, double topPercentile, double similarityThreshold)
         {
@@ -24,8 +23,8 @@ namespace TaskSummarization
             this.similarityThreshold = similarityThreshold;
 
             init();
-            this.taskSwitchTimes = summarizer.getTimes();
-            this.bags = summarizer.getBags();
+            
+            this.tasks = summarizer.getTasks();
             this.correctData = getCorrectData();
 
         }
@@ -38,43 +37,26 @@ namespace TaskSummarization
 
             foreach (List<string> titles in data)
             {
-                BagOfWords bag = new BagOfWords(titles, topPercentile);
-                summarizer.addBag(bag);
+                Task task = new Task(titles, topPercentile);
+                summarizer.addTask(task);
 
             }
             summarizer.printData();
 
         }
 
-        private int getBagNumber(int startTime, int endTime)
-        {
-            List<int[]> taskSwitchTimes = summarizer.getTimes();
-            int bagNum = 0;
-            foreach(int[] task in taskSwitchTimes)
-            {
-                if(task[0] <= startTime && task[1] >= endTime)
-                {
-                    return bagNum;
-                }
-                bagNum++;
-            }
-            return -1;
-        }
-
-
-
         public float test()
         {
 
             float correctPoints = 0;
             
-            foreach (int[] time in taskSwitchTimes)
+            foreach (Task task in tasks)
             {
-                int startSecs = time[0];
-                int endSecs = time[1];
+                int startSecs = task.getStartTime();
                 TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
                 string startHours = startTime.ToString(@"hh\:mm\:ss");
 
+                int endSecs = task.getEndTime();
                 TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
                 string endHours = endTime.ToString(@"hh\:mm\:ss");
 
@@ -87,64 +69,9 @@ namespace TaskSummarization
                     Console.WriteLine("wrong from: " + startHours + " to " + endHours);
                 }
             }
-            float ans = correctPoints / taskSwitchTimes.Count;
+            float ans = correctPoints / tasks.Count;
             return ans;
         }
-
-
-
-        //public float test()
-        //{
-        //    float correctPoints = 0;
-        //    float totalPoints = 0;
-        //    float ans = 0;
-
-
-        //    int curTime = 0; // Current time
-
-        //    // loop through correctData
-        //    foreach(KeyValuePair<int[], int> correctTask in correctData)
-        //    {
-        //        int upperBound = correctTask.Key[1];
-        //        var freq = new Dictionary<int, int>(); // frequency of each task number
-        //        int index = 0;
-        //        while ((curTime + numSecs) <= upperBound)
-        //        {
-        //            int bagNum = getBagNumber(curTime, curTime + numSecs);
-        //            if (bagNum >= 0) {
-        //                int endTime = curTime + numSecs;
-        //                TimeSpan ctime = TimeSpan.FromSeconds(curTime);
-        //                string chours = ctime.ToString(@"hh\:mm\:ss");
-        //                TimeSpan etime = TimeSpan.FromSeconds(endTime);
-        //                string ehours = etime.ToString(@"hh\:mm\:ss");
-        //              //  Console.WriteLine(chours + " to " + ehours + " : " + bags[bagNum].Value);
-        //                int taskNum = bags[bagNum].Value;
-        //                if (freq.ContainsKey(taskNum))
-        //                {
-        //                    freq[taskNum] = freq[taskNum] + 1;
-        //                } else
-        //                {
-        //                    freq.Add(taskNum, 1);
-        //                }
-
-        //                totalPoints++;
-        //            }
-        //            index++;
-        //            curTime += numSecs;
-        //        }
-        //        curTime += numSecs;
-        //        if (freq.Count > 0)
-        //        {
-        //            correctPoints += freq.Values.Max();
-        //        }
-        //     //   Console.WriteLine(correctPoints + " / " + totalPoints);
-        //    }
-        //     ans = correctPoints / totalPoints;
-
-        //    return ans;
-        //}
-
-
 
 
         private bool isHomogeneous(int startTime, int endTime)
@@ -160,8 +87,6 @@ namespace TaskSummarization
             }
             //return -1; // transition period
             return false;
-
-
         }
 
 
@@ -271,5 +196,7 @@ namespace TaskSummarization
             return titles;
 
         }
+
+
     }
 }
