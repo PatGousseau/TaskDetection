@@ -18,8 +18,8 @@ namespace TaskSummarization
 
         private static void quickTest()
         {
-            int numSecs = 60;
-            double similarity = 0.5;
+            int numSecs = 90;
+            double similarity = 0.45;
             double topPercentile = 0.4;
 
 

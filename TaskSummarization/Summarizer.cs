@@ -47,7 +47,7 @@ namespace TaskSummarization
             {
                 
                 // Collapse if preceding bag is similar to the new one
-                if (similarTasks(tasks[tasks.Count - 1],newTask))
+                if (similarTasks(tasks[tasks.Count - 1],newTask, similarityThreshold))
                 {
                     tasks[tasks.Count - 1].collapseTasks(newTask,numSecs);
                     
@@ -60,7 +60,7 @@ namespace TaskSummarization
                     // Check if newBag represents the same task as a previous bag
                     foreach (Task task in tasks)
                     {
-                        if (similarTasks(task, newTask)) {
+                        if (similarTasks(task, newTask, similarityThreshold)) {
                             newTaskNum = task.getTaskNum();
                             isNewTask = false;
                             break;
@@ -98,12 +98,13 @@ namespace TaskSummarization
         /// <param name="task1"></param>
         /// <param name="task2"></param>
         /// <returns></returns>
-        private Boolean similarTasks(Task task1, Task task2)
+        public Boolean similarTasks(Task task1, Task task2, double similarityThreshold)
         {
             double[] task1Vector = task1.getVector();
             double[] task2Vector = task2.getVector();
 
             double cosineSimilarity = 1 - Distance.Cosine(task1Vector, task2Vector);
+            Console.WriteLine(cosineSimilarity);
             return cosineSimilarity >= similarityThreshold;
 
         }
