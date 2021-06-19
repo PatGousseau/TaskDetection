@@ -16,6 +16,7 @@ namespace TaskSummarization
         private List<Task> tasks;
         private List<KeyValuePair<int[], int>> correctData;
         private Dictionary<int, Task> GroundTruthDescriptions;
+        
 
         public Tester(int numSecs, double topPercentile, double similarityThreshold)
         {
@@ -59,61 +60,75 @@ namespace TaskSummarization
         /// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
         public float test()
         {
-            float[] results = new float[2]; 
+            float[] results = new float[2];
             float correctHorizPoints = 0;
-            
-            foreach (Task task in tasks)
+            double numCorrectTrans = 0;
+
+            Dictionary<int, List<KeyValuePair<int[], int>>> correctDict = new Dictionary<int, List<KeyValuePair<int[], int>>>();
+
+
+            foreach (KeyValuePair<int[], int>  GTtask in correctData)
             {
-                int startSecs = task.getStartTime();
+                int startSecs = GTtask.Key[0];
                 TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
                 string startHours = startTime.ToString(@"hh\:mm\:ss");
 
-                int endSecs = task.getEndTime();
+                int endSecs = GTtask.Key[1];
                 TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
                 string endHours = endTime.ToString(@"hh\:mm\:ss");
 
-                if (isHomogeneous(startSecs, endSecs))
+                // Add all correct task segments to a dictionnary
+                if(correctDict.ContainsKey(GTtask.Value))
                 {
-                    if(summarizer.similarTasks(task,GroundTruthDescriptions[getCorrectTaskNum(startSecs, endSecs)], 0.3))
-                    {
-                        correctHorizPoints++;
-                        Console.WriteLine("correct from: " + startHours + " to " + endHours);
-                    } else
-                    {
-                        Console.WriteLine("wrong from: " + startHours + " to " + endHours + " cosine" );
-                    }
-                    
-                    
+                    correctDict[GTtask.Value].Add(GTtask);
                 } else
                 {
-                    Console.WriteLine("wrong from: " + startHours + " to " + endHours + " homo");
+                    correctDict.Add( GTtask.Value, new List<KeyValuePair<int[], int>> { GTtask });
+                }
+                
+
+
+                // check if transition period also occurs in output
+                if(!isHomogeneous(GTtask.Key[1] - 60, GTtask.Key[1] + 60)) // within 2 minutes
+                {
+                    Console.WriteLine("transition: " + endHours + " - 60 to  " + endHours + " + 60");
+                    numCorrectTrans++;
                 }
             }
+
+
+
+
+            double transitionAccuracy = numCorrectTrans / correctData.Count - 1;
             float horizontalAccracy = correctHorizPoints / tasks.Count;
             results[0] = horizontalAccracy;
             return horizontalAccracy;
         }
 
 
-        /// <summary>
-        /// Returns whether or not the segment from startTime to endTime in 
-        /// the correct data is homogenous (comprised of a single task)
-        /// </summary>
-        /// <param name="startTime"></param>
-        /// <param name="endTime"></param>
-        /// <returns></returns>
-        private bool isHomogeneous(int startTime, int endTime)
+
+        private void taskMatching(Dictionary<int, List<KeyValuePair<int[], int>>> correctDict, Dictionary<int, List<Task>> outputDict)
+        {
+            // take one item from correect dict
+            //
+            
+        }
+
+
+    private bool isHomogeneous(int startTime, int endTime)
         {
 
-            for(int i = 0; i < correctData.Count; i++)
+            foreach (Task task in tasks)
             {
-                if(startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
+                if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
                 {
                     return true;
                 }
             }
-            return false;
+            return false; // transition period
+
         }
+
 
         /// <summary>
         /// Returns whether or not the segment from startTime to endTime in 
@@ -122,17 +137,112 @@ namespace TaskSummarization
         /// <param name="startTime"></param>
         /// <param name="endTime"></param>
         /// <returns></returns>
-        private int getCorrectTaskNum(int startTime, int endTime)
+        //private bool isHomogeneous(int startTime, int endTime)
+        //{
+
+        //    for (int i = 0; i < correctData.Count; i++)
+        //    {
+        //        if (startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
+        //        {
+        //            return true;
+        //        }
+        //    }
+        //    return false;
+        //}
+
+        ///// <summary>
+        ///// Tests the algorithm
+        ///// </summary>
+        ///// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
+        //public float test()
+        //{
+        //    float[] results = new float[2]; 
+        //    float correctHorizPoints = 0;
+
+        //    foreach (Task task in tasks)
+        //    {
+        //        int startSecs = task.getStartTime();
+        //        TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
+        //        string startHours = startTime.ToString(@"hh\:mm\:ss");
+
+        //        int endSecs = task.getEndTime();
+        //        TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
+        //        string endHours = endTime.ToString(@"hh\:mm\:ss");
+
+        //        if (isHomogeneous(startSecs, endSecs))
+        //        {
+        //            if(summarizer.similarTasks(task,GroundTruthDescriptions[getCorrectTaskNum(startSecs, endSecs)], 0.3))
+        //            {
+        //                correctHorizPoints++;
+        //                //Console.WriteLine("correct from: " + startHours + " to " + endHours);
+        //            } else
+        //            {
+        //                //Console.WriteLine("wrong from: " + startHours + " to " + endHours + " cosine" );
+        //            }
+
+
+        //        } else
+        //        {
+        //            //Console.WriteLine("wrong from: " + startHours + " to " + endHours + " homo");
+        //        }
+        //    }
+        //    float horizontalAccracy = correctHorizPoints / tasks.Count;
+        //    results[0] = horizontalAccracy;
+        //    return horizontalAccracy;
+        //}
+
+
+        ///// <summary>
+        ///// Returns whether or not the segment from startTime to endTime in 
+        ///// the correct data is homogenous (comprised of a single task)
+        ///// </summary>
+        ///// <param name="startTime"></param>
+        ///// <param name="endTime"></param>
+        ///// <returns></returns>
+        //private bool isHomogeneous(int startTime, int endTime)
+        //{
+
+        //    for(int i = 0; i < correctData.Count; i++)
+        //    {
+        //        if(startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
+        //        {
+        //            return true;
+        //        }
+        //    }
+        //    return false;
+        //}
+
+        /// <summary>
+        /// Returns whether or not the segment from startTime to endTime in 
+        /// the correct data is homogenous (comprised of a single task)
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
+        //private int getCorrectTaskNum(int startTime, int endTime)
+        //{
+
+        //    for (int i = 0; i < correctData.Count; i++)
+        //    {
+        //        if (startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
+        //        {
+        //            return correctData[i].Value;
+        //        }
+        //    }
+        //    return -1; // transition period
+        //}
+
+        private Task getTaskNum(int startTime, int endTime)
         {
 
-            for (int i = 0; i < correctData.Count; i++)
+            foreach (Task task in tasks)
             {
-                if (startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
+                if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
                 {
-                    return correctData[i].Value;
+                    return task;
                 }
             }
-            return -1; // transition period
+            return null; // transition period
         }
 
 

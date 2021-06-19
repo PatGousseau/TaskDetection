@@ -11,15 +11,16 @@ namespace TaskSummarization
         
         static void Main(string[] args)
         {
-            quickTest();
 
+            //megaTest();
+            quickTest();
         }
 
 
         private static void quickTest()
         {
-            int numSecs = 90;
-            double similarity = 0.45;
+            int numSecs = 60;
+            double similarity = 0.2;
             double topPercentile = 0.4;
 
 
@@ -33,28 +34,47 @@ namespace TaskSummarization
 
         private static void megaTest()
         {
-            int startNumSecs = 30;
-            double startSimilarity = 0.3;
+
+            string filePath = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\megaTestP04.txt";
+
+            Console.WriteLine("Enter duration of each timeblock:");
+            string strNumSecs = Console.ReadLine();
+            string[] numSecs = strNumSecs.Split(',');
+            Console.WriteLine("Enter similary thresholds seperated by commas:");
+            string strSimilarities = Console.ReadLine();
+            string[] similarities = strSimilarities.Split(',');
+
+            File.AppendAllText(filePath, "Participant ID: P04" + Environment.NewLine);
+
+
             double topPercentile = 0.4;
             string id = "P04";
 
-            string filePath = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\megaTestP04.txt";
+
             List<string> lines = new List<string>();
             lines.Add("Participant ID: " + id);
+            double soFar = 0;
+            double total = similarities.Length;
 
-            for (int numSecs = startNumSecs; numSecs <= 180; numSecs += 30) // 30 to 180
+            for (int j = 0; j < numSecs.Length; j++) // 30 to 180
             {
-                for (double similarity = startSimilarity; similarity <= 0.4; similarity += 0.1) // 0.3 to 0.6
+                int curNumSecs = Convert.ToInt32(numSecs[j]);
+                for (int i = 0; i < similarities.Length; i++) // 0.2 to 0.5
                 {
 
-                    Tester tester = new Tester(numSecs, topPercentile, similarity);
+                    Tester tester = new Tester(curNumSecs, topPercentile, Convert.ToDouble(similarities[i]));
                     float accuracy = tester.test();
-                    string toAdd = "number of seconds: " + numSecs + ", similarity threshold: " + similarity + ", accuracy: " + accuracy;
+                    string toAdd = "number of seconds: " + curNumSecs + ", top % of words: " + topPercentile + ", similarity threshold: " + similarities[i] + ", accuracy: " + accuracy;
                     lines.Add(toAdd);
-                    Console.WriteLine("X");
+                    soFar++;
+                   double progress = (soFar / total);
+                    int perc =(int) (progress * 100);
+                    Console.WriteLine(perc + "% complete");
+                    File.AppendAllText(filePath, toAdd + Environment.NewLine);
                 }
             }
-            File.WriteAllLines(filePath, lines);
+            
+            Console.WriteLine("Done!");
             Console.ReadLine();
         }
 

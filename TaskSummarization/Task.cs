@@ -23,7 +23,7 @@ namespace TaskSummarization
 
         private double topPercentile;
         private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
-        // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
+         //private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
 
         public Task(List<string> windowTitles, double topPercentile)
         {
@@ -162,7 +162,7 @@ namespace TaskSummarization
 
             foreach (string word in words)
             {
-                if (!Regex.IsMatch(word.ToLower(), "google") && !Regex.IsMatch(word.ToLower(), "search")) // remove google search
+                if (!Regex.IsMatch(word.ToLower(), "google") && !Regex.IsMatch(word.ToLower(), "search")) // remove google search *temporary*
                 {
                     if (hunspell.Spell(word) && !Regex.IsMatch(word, @"^\d+$")) // If word is a correct English word
                     {

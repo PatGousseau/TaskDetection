@@ -11,7 +11,7 @@ namespace TaskSummarization
 
         
         private List<Task> tasks; // KeyPair consists of bag of words and task number     
-        private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
+        //private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
         //private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
         private double similarityThreshold; // Minimum cosine similarity for two bags of words to be considered alike
         private int numTasks = 0;
@@ -104,7 +104,7 @@ namespace TaskSummarization
             double[] task2Vector = task2.getVector();
 
             double cosineSimilarity = 1 - Distance.Cosine(task1Vector, task2Vector);
-            Console.WriteLine(cosineSimilarity);
+            
             return cosineSimilarity >= similarityThreshold;
 
         }
