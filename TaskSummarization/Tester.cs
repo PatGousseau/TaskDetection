@@ -12,26 +12,28 @@ namespace TaskSummarization
         private int numSecs;
         private double topPercentile;
         private double similarityThreshold;
+        private string participant;
         private Summarizer summarizer;
         private List<Task> tasks;
         private List<KeyValuePair<int[], int>> correctData;
+        private Dictionary<int, List<int>> taskMatchingDict;
         private Dictionary<int, Task> GroundTruthDescriptions;
         
 
-        public Tester(int numSecs, double topPercentile, double similarityThreshold)
+        public Tester(int numSecs, double topPercentile, double similarityThreshold, string participant)
         {
             this.numSecs = numSecs;
             this.topPercentile = topPercentile;
             this.similarityThreshold = similarityThreshold;
             GroundTruthDescriptions = new Dictionary<int, Task>();
+            this.participant = participant;
+            taskMatchingDict = new Dictionary<int, List<int>>();
 
             initializeSummarizer();
             setGTDescriptions();
 
-
             this.tasks = summarizer.getTasks();
             this.correctData = getCorrectData();
-
         }
 
         /// <summary>
@@ -41,7 +43,7 @@ namespace TaskSummarization
         private void initializeSummarizer()
         {
 
-            List<List<string>> data = getInputData(numSecs);
+            List<List<string>> data =     getInputData(numSecs); //getPersonalInputData(numSecs);
             this.summarizer = new Summarizer(numSecs,similarityThreshold);
 
             foreach (List<string> titles in data)
@@ -58,13 +60,15 @@ namespace TaskSummarization
         /// Tests the algorithm
         /// </summary>
         /// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
-        public float test()
+        public float[] test()
         {
             float[] results = new float[2];
             float correctHorizPoints = 0;
+            float correctVertPoints = 0;
             double numCorrectTrans = 0;
+          
 
-            Dictionary<int, List<KeyValuePair<int[], int>>> correctDict = new Dictionary<int, List<KeyValuePair<int[], int>>>();
+            //Dictionary<int, List<KeyValuePair<int[], int>>> correctDict = new Dictionary<int, List<KeyValuePair<int[], int>>>();
 
 
             foreach (KeyValuePair<int[], int>  GTtask in correctData)
@@ -77,32 +81,144 @@ namespace TaskSummarization
                 TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
                 string endHours = endTime.ToString(@"hh\:mm\:ss");
 
-                // Add all correct task segments to a dictionnary
-                if(correctDict.ContainsKey(GTtask.Value))
-                {
-                    correctDict[GTtask.Value].Add(GTtask);
-                } else
-                {
-                    correctDict.Add( GTtask.Value, new List<KeyValuePair<int[], int>> { GTtask });
-                }
-                
 
+
+
+
+
+                // Vertical Test
+                if (isHomogeneous(GTtask.Key[0] + 150 , GTtask.Key[1] - 150))
+                {
+
+                    if (summarizer.similarTasks(getTaskAtTime(startSecs + 150, endSecs - 150), GroundTruthDescriptions[GTtask.Value], 0.3))
+                    {
+                        correctVertPoints++;
+                        Console.WriteLine("vertical correct from: " + startHours + " to " + endHours);
+                    }
+                }
+
+                // Task association test
+
+                // Add corresponding output task number to the GT task number entry in dictionary 
+                int outputTaskNum = mostCommonTaskNum(GTtask.Key[0], GTtask.Key[1]);
+
+                if (taskMatchingDict.ContainsKey(GTtask.Value))
+                {
+                    taskMatchingDict[GTtask.Value].Add(outputTaskNum);
+                }
+                else
+                {
+                    taskMatchingDict.Add(GTtask.Value, new List<int> { outputTaskNum });
+                }
+
+
+
+                // Horizontal test
 
                 // check if transition period also occurs in output
-                if(!isHomogeneous(GTtask.Key[1] - 60, GTtask.Key[1] + 60)) // within 2 minutes
+                if (!isHomogeneous(GTtask.Key[1] - 150, GTtask.Key[1] + 150) && !isHomogeneous(GTtask.Key[0] - 150, GTtask.Key[0] + 150)) // within 5 minutes
                 {
-                    Console.WriteLine("transition: " + endHours + " - 60 to  " + endHours + " + 60");
+                    
                     numCorrectTrans++;
+                    if(isHomogeneous(GTtask.Key[0] + 150, GTtask.Key[1] - 150))
+                    {
+
+
+
+
+
+                        Console.WriteLine("horiz perfect: " + startHours + " to " + endHours);
+                        correctHorizPoints++;
+
+                    }
+                    else
+                    {
+                        //Console.WriteLine("transition: " + endHours + " - 60 to  " + endHours + " + 60");
+                    }
+                }
+            }
+
+            foreach(KeyValuePair<int,List<int>> GTnum in taskMatchingDict)
+            {
+                List<int> outputs = GTnum.Value;
+                foreach(int output in outputs)
+                {
+                    Console.WriteLine(GTnum.Key + " : " + output);
                 }
             }
 
 
+            float horizontalAccuracy = correctHorizPoints / correctData.Count;
+            float verticalAccuracy = correctVertPoints / correctData.Count;
+            results[0] = horizontalAccuracy;
+            results[1] = verticalAccuracy;
+            return results;
+        }
 
 
-            double transitionAccuracy = numCorrectTrans / correctData.Count - 1;
-            float horizontalAccracy = correctHorizPoints / tasks.Count;
-            results[0] = horizontalAccracy;
-            return horizontalAccracy;
+        //private double taskAssociationTest()
+        //{
+        //    taskMatchingDict
+        //}
+
+        /// <summary>
+        /// Returns whether or not the segment from startTime to endTime in 
+        /// the correct data is homogenous (comprised of a single task)
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
+        private Task getTaskAtTime(int startTime, int endTime)
+        {
+
+            foreach (Task task in tasks)
+            {
+                if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
+                {
+                    return task;
+                }
+            }
+            return null; // transition period
+        }
+
+        private int mostCommonTaskNum(int GTStartTime, int GTEndTime)
+        {
+            int mostCommon = -1;
+            int currentMax = 0;
+            foreach (Task task in tasks)
+            {
+                int outputStartTime = task.getStartTime();
+                int outputEndTime = task.getEndTime();
+                int numTimeBlocks = 0;
+
+                if(outputStartTime >= GTStartTime && outputEndTime <= GTEndTime) // ouput block is within GT
+                {
+                    numTimeBlocks = (outputEndTime - outputStartTime) / numSecs;
+
+                } else if (outputStartTime >= GTStartTime && outputStartTime <= GTEndTime) // output block begins in GT and ends after it
+                {
+                    numTimeBlocks = (GTEndTime - outputStartTime) / numSecs;
+
+                } else if (outputEndTime >= GTStartTime && outputEndTime <= GTEndTime) // output block begins before GT and ends inside of it
+                {
+                    numTimeBlocks = (outputEndTime - GTStartTime) / numSecs;
+
+                } else if(outputStartTime <= GTStartTime && outputEndTime >= GTEndTime) // output block begins before GT and ends after it
+                {
+                    numTimeBlocks = (GTEndTime - GTStartTime) / numSecs;
+                }
+                   
+                if (numTimeBlocks > currentMax)
+                {
+                        
+                    currentMax = numTimeBlocks;
+                    mostCommon = task.getTaskNum();
+                }
+                   
+            }
+
+            Console.WriteLine("return: " + mostCommon);
+            return mostCommon;
         }
 
 
@@ -115,7 +231,7 @@ namespace TaskSummarization
         }
 
 
-    private bool isHomogeneous(int startTime, int endTime)
+        private bool isHomogeneous(int startTime, int endTime)
         {
 
             foreach (Task task in tasks)
@@ -212,25 +328,7 @@ namespace TaskSummarization
         //    return false;
         //}
 
-        /// <summary>
-        /// Returns whether or not the segment from startTime to endTime in 
-        /// the correct data is homogenous (comprised of a single task)
-        /// </summary>
-        /// <param name="startTime"></param>
-        /// <param name="endTime"></param>
-        /// <returns></returns>
-        //private int getCorrectTaskNum(int startTime, int endTime)
-        //{
 
-        //    for (int i = 0; i < correctData.Count; i++)
-        //    {
-        //        if (startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
-        //        {
-        //            return correctData[i].Value;
-        //        }
-        //    }
-        //    return -1; // transition period
-        //}
 
         private Task getTaskNum(int startTime, int endTime)
         {
@@ -255,13 +353,16 @@ namespace TaskSummarization
             string format = "g";
             var culture = CultureInfo.InvariantCulture;
             List<KeyValuePair<int[], int>> truth = new List<KeyValuePair<int[], int>>();
-            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\P04\truth.txt";
+            string path = @"c:\users\pcgou\onedrive\documents\ubcresearch\window_titles\";
+           path += participant;
+            path += @"\truth.txt";
+            //string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\PD\truth.txt";
             try
             {
                 string[] lines = File.ReadAllLines(path);
                 for (int i = 1; i < lines.Length; i++)
                 {
-
+                    //Console.WriteLine(lines.Length);
                     string[] items = lines[i].Split(',');
 
                     int[] time = new int[2]; // time[0] = start time, time[1] = end time 
@@ -271,13 +372,14 @@ namespace TaskSummarization
                     TimeSpan.TryParseExact(items[1], format, culture, TimeSpanStyles.AssumeNegative, out end);
                     time[0] = Convert.ToInt32(start.TotalSeconds);
                     time[1] = Convert.ToInt32(end.TotalSeconds);
-
+                    
                     truth.Add(new KeyValuePair<int[], int>(time, Convert.ToInt32(items[2])));
                 }
 
             }
             catch (Exception e)
             {
+                
                 Console.WriteLine(e.Message);
             }
 
@@ -298,12 +400,15 @@ namespace TaskSummarization
         /// </summary>
         /// <param name="numSecs"></param>
         /// <returns></returns>
-        public static List<List<string>> getInputData(int numSecs)
+        public List<List<string>> getInputData(int numSecs)
         {
-
+            
             double currentTime = 0;
             List<List<string>> titles = new List<List<string>>();
-            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\P04\appdata_fixed.csv";
+            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\";
+            path += participant;
+            path += @"\appdata_fixed.csv";
+            
             try
             {
                 string[] lines = File.ReadAllLines(path);
@@ -362,6 +467,74 @@ namespace TaskSummarization
 
         }
 
+        public List<List<string>> getPersonalInputData(int numSecs)
+        {
+
+            double currentTime = 0;
+            List<List<string>> titles = new List<List<string>>();
+            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\PD\personal_data2.txt";
+
+            try
+            {
+                string[] lines = File.ReadAllLines(path);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string[] items = lines[i].Split(',');
+                    double duration = Convert.ToDouble(items[2]);
+
+                    int startBlock = (int)(currentTime / numSecs); // block of time in which the window title began
+                    currentTime += duration;
+                    int endBlock = (int)(currentTime / numSecs); // block of time in which the window title ended
+
+
+                    //add the window title to all blocks of time it occured in 
+                    for (int j = startBlock; j <= endBlock; j++)
+                    {
+
+                        if (j >= titles.Count) // if there is no block for this time window in the list
+                        {
+                            List<string> newBlock = new List<string>();
+                            newBlock.Add(items[3]);
+                            titles.Add(newBlock);
+                        }
+                        else
+                        {
+
+                            titles[j].Add(items[3]);
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                
+            }
+
+
+
+            //foreach (List<string> list in titles)
+            //{
+
+            //    foreach (string token in list)
+            //    {
+            //        Console.WriteLine(token);
+
+
+            //    }
+
+            //    Console.WriteLine("-------------------------------");
+
+            //}
+            //Console.ReadLine();
+
+            return titles;
+
+        }
+
+
+
         /// <summary>
         /// Initalizes GroundTruthDescriptions
         /// </summary>
@@ -375,6 +548,12 @@ namespace TaskSummarization
             Task task4 = new Task(new List<string> { "Your coworker is having difficulty deciding on which productivity app they should use, and have asked you for a recommendation. They have narrowed their decision to 3 apps: Microsoft To-do, Wunderlist, and Todoist. Based only on app store reviews, which of these apps would you recommend? Identify any reviews that were particularly influential in your decision." }, 1);
             Task task5 = new Task(new List<string> { "You are preparing to give a presentation on potential deep learning applications to the CTO of your company. While you have already completed the slides for the presentation, you should also prepare answers for a few questions which are likely to arise during the presentation. The lines drawn between layers of the network on the included slide represent weighted inputs from one layer to the next. How does the network decide on what weights to choose during the training process? Most of the technologies behind deep learning have already been around for over 30 years.Why is deep learning only becoming popular now ? What has changed ? What kind of performance increases can be seen by using GPU's instead of CPU's? Are GPU's always superior with respect to deep learning applications?" }, 1);
             Task task6 = new Task(new List<string> { "You recently gave a short presentation to your colleagues outlining different ways the company may be able to make use of blockchain. One of your co-workers felt a little bit lost during the presentation, and emailed you a couple follow up questions afterwards. You mentioned that blockchain is a form of distributed ledger. What does this mean? What advantages are offered over traditional client-server database ledger systems? Could you explain what proof-of-work means? What is it? What does it do? Why is it necessary ?" }, 1);
+
+            //Task task1 = new Task(new List<string> { "Clean up code in Microsoft Visual Code" }, 1);
+            //Task task2 = new Task(new List<string> { "Transfer data from Notepad to Excel. Manipulate the data to find correlations" }, 1);
+            //Task task3 = new Task(new List<string> { "Find out if I should take a trip to Peru or Portugal. Look at Covid and vaccination profile to make sure it is safe" }, 1);
+            //Task task4 = new Task(new List<string> { "Read emails and reply to emails" }, 1);
+            //Task task5 = new Task(new List<string> { "Run a test in Visual Studio and transfer the data from Notepad to Excel " }, 1);
 
             this.GroundTruthDescriptions.Add(1, task1);
             this.GroundTruthDescriptions.Add(2, task2);

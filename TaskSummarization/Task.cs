@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+
+
 namespace TaskSummarization
 
 {
@@ -23,7 +25,7 @@ namespace TaskSummarization
 
         private double topPercentile;
         private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
-         //private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
+       // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
 
         public Task(List<string> windowTitles, double topPercentile)
         {
@@ -60,6 +62,7 @@ namespace TaskSummarization
                 catch
                 {
                     // Do nothing for unkown words
+                    
                 }
             }
 
@@ -139,8 +142,8 @@ namespace TaskSummarization
 
             foreach (string windowTitle in data)
             {
-                // Tokenize, remove stop words, stem and remove non english words
-                List<string> cleanedWindowTitle = removeNonEnglishWordsAndStem(tokenize(windowTitle)); // List of tokens based off the window title
+                // Tokenize, remove stop words and remove non english words
+                List<string> cleanedWindowTitle = removeNonEnglishWords(tokenize(windowTitle)); // List of tokens based off the window title
                 cleanedText.Add(cleanedWindowTitle);
 
             }
@@ -149,24 +152,39 @@ namespace TaskSummarization
         }
 
 
+
         /// <summary>
-        /// Removes non English words and stems each word
+        /// Removes non English words and splits camel case words
         /// </summary>
         /// <param name="words"></param>
         /// <returns></returns>
-        private List<string> removeNonEnglishWordsAndStem(string[] words)
+        private List<string> removeNonEnglishWords(string[] words)
         {
             EnglishStemmer stemmer = new EnglishStemmer();
-            Hunspell hunspell = new Hunspell("en_us.aff", "en_us.dic");
+
+   
+
+            Hunspell hunspell = new Hunspell(@"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.aff", @"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.dic");
             List<string> englishWords = new List<string>();
 
             foreach (string word in words)
             {
-                if (!Regex.IsMatch(word.ToLower(), "google") && !Regex.IsMatch(word.ToLower(), "search")) // remove google search *temporary*
+
+                string camelCase = Regex.Replace(Regex.Replace(word, @"(\P{Ll})(\P{Ll}\p{Ll})", "$1 $2"), @"(\p{Ll})(\P{Ll})", "$1 $2"); // Splits camel case token into seperate words
+                string[] tokens = camelCase.Split(' ');
+                foreach (string token in tokens)
                 {
-                    if (hunspell.Spell(word) && !Regex.IsMatch(word, @"^\d+$")) // If word is a correct English word
+                    if (!Regex.IsMatch(token.ToLower(), "google") && !Regex.IsMatch(token.ToLower(), "search") && !Regex.IsMatch(token.ToLower(), "com") && !Regex.IsMatch(token.ToLower(), "ca")) // remove google search *temporary*
                     {
-                        englishWords.Add(stemmer.Stem(word)); // Add the stem of the word
+                        if (hunspell.Spell(token) && !Regex.IsMatch(token, @"^\d+$")) // If word is a correct English word
+                        {
+                            //Console.WriteLine("word: " + token);
+                            englishWords.Add(token.ToLower());// stemmer.Stem(word)); // Add the stem of the word
+                        }
+                        else
+                        {
+                              //C//onsole.WriteLine("not a word: " + token);
+                        }
                     }
                 }
             }
@@ -185,7 +203,7 @@ namespace TaskSummarization
             var emptyData = new List<TextData>();
             var data = context.Data.LoadFromEnumerable(emptyData);
 
-            var tokenization = context.Transforms.Text.TokenizeIntoWords("Tokens", "Text", separators: new[] { ' ', ',', '-', '_' })
+            var tokenization = context.Transforms.Text.TokenizeIntoWords("Tokens", "Text", separators: new[] { ' ', ',', '-', '_','.',':' })
                 .Append(context.Transforms.Text.RemoveDefaultStopWords("Tokens", "Tokens",
                     Microsoft.ML.Transforms.Text.StopWordsRemovingEstimator.Language.English));
 
