@@ -102,8 +102,8 @@ namespace TaskSummarization
             //participantIDs.Add("P05");
             //participantIDs.Add("P06");
             //participantIDs.Add("P14");
-            //participantIDs.Add("P15");
-            //participantIDs.Add("P16");
+          //  participantIDs.Add("P15");
+            participantIDs.Add("P16");
             participantIDs.Add("P18");
         }
 
@@ -111,7 +111,7 @@ namespace TaskSummarization
         {
             addIDs();
 
-            string filePath = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\Tests\perfect\average.txt";
+            string filePath = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\Tests\perfect\task_association.txt";
 
             Console.WriteLine("Enter duration of each timeblock:");
             string strNumSecs = Console.ReadLine();
@@ -139,7 +139,7 @@ namespace TaskSummarization
 
                         Tester tester = new Tester(curNumSecs, topPercentile, Convert.ToDouble(similarities[i]), participantIDs[k]);
                         float[] accuracy = tester.test();
-                        string toAdd = participantIDs[k] + ": number of seconds: " + curNumSecs + ", top % of words: " + topPercentile + ", similarity threshold: " + similarities[i] + " , horiz accuracy: " + accuracy[0] + ", vert accuracy: " + accuracy[1];
+                        string toAdd = participantIDs[k] + ": number of seconds: " + curNumSecs + ", top % of words: " + topPercentile + ", similarity threshold: " + similarities[i] + " , GT accuracy: " + accuracy[0] + " , output accuracy: " + accuracy[1];
                         soFar++;
                         double progress = (soFar / total);
                         int perc = (int)(progress * 100);

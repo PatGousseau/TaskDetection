@@ -16,7 +16,8 @@ namespace TaskSummarization
         private Summarizer summarizer;
         private List<Task> tasks;
         private List<KeyValuePair<int[], int>> correctData;
-        private Dictionary<int, List<int>> taskMatchingDict;
+        private Dictionary<int, Dictionary<int,int>> GTtaskMatchingDict;
+        private Dictionary<int, Dictionary<int, int>> outputTaskMatchingDict;
         private Dictionary<int, Task> GroundTruthDescriptions;
         
 
@@ -25,9 +26,10 @@ namespace TaskSummarization
             this.numSecs = numSecs;
             this.topPercentile = topPercentile;
             this.similarityThreshold = similarityThreshold;
-            GroundTruthDescriptions = new Dictionary<int, Task>();
             this.participant = participant;
-            taskMatchingDict = new Dictionary<int, List<int>>();
+            GroundTruthDescriptions = new Dictionary<int, Task>();
+            GTtaskMatchingDict = new Dictionary<int, Dictionary<int, int>>();
+            outputTaskMatchingDict = new Dictionary<int, Dictionary<int, int>>(); 
 
             initializeSummarizer();
             setGTDescriptions();
@@ -57,7 +59,7 @@ namespace TaskSummarization
         }
 
         /// <summary>
-        /// Tests the algorithm
+        /// Runs the horizontal, vertical and task association tests
         /// </summary>
         /// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
         public float[] test()
@@ -65,12 +67,7 @@ namespace TaskSummarization
             float[] results = new float[2];
             float correctHorizPoints = 0;
             float correctVertPoints = 0;
-            double numCorrectTrans = 0;
           
-
-            //Dictionary<int, List<KeyValuePair<int[], int>>> correctDict = new Dictionary<int, List<KeyValuePair<int[], int>>>();
-
-
             foreach (KeyValuePair<int[], int>  GTtask in correctData)
             {
                 int startSecs = GTtask.Key[0];
@@ -82,84 +79,102 @@ namespace TaskSummarization
                 string endHours = endTime.ToString(@"hh\:mm\:ss");
 
 
+                // Populate GTtaskMatchingDict
 
+                int outputTaskNum = mostCommonTaskNumInOutput(startSecs, endSecs); // Most common task number in the output within the interval of GTtask
 
-
-
-                // Vertical Test
-                if (isHomogeneous(GTtask.Key[0] + 150 , GTtask.Key[1] - 150))
+                if(GTtaskMatchingDict.ContainsKey(GTtask.Value))
                 {
-
-                    if (summarizer.similarTasks(getTaskAtTime(startSecs + 150, endSecs - 150), GroundTruthDescriptions[GTtask.Value], 0.3))
-                    {
-                        correctVertPoints++;
-                        Console.WriteLine("vertical correct from: " + startHours + " to " + endHours);
-                    }
+                    addToDict(GTtaskMatchingDict[GTtask.Value],outputTaskNum);
+                } else
+                {
+                    GTtaskMatchingDict.Add(GTtask.Value, new Dictionary<int, int> { { outputTaskNum, 1 } });
                 }
 
-                // Task association test
-
-                // Add corresponding output task number to the GT task number entry in dictionary 
-                int outputTaskNum = mostCommonTaskNum(GTtask.Key[0], GTtask.Key[1]);
-
-                if (taskMatchingDict.ContainsKey(GTtask.Value))
-                {
-                    taskMatchingDict[GTtask.Value].Add(outputTaskNum);
-                }
-                else
-                {
-                    taskMatchingDict.Add(GTtask.Value, new List<int> { outputTaskNum });
-                }
-
-
-
-                // Horizontal test
-
-                // check if transition period also occurs in output
-                if (!isHomogeneous(GTtask.Key[1] - 150, GTtask.Key[1] + 150) && !isHomogeneous(GTtask.Key[0] - 150, GTtask.Key[0] + 150)) // within 5 minutes
-                {
-                    
-                    numCorrectTrans++;
-                    if(isHomogeneous(GTtask.Key[0] + 150, GTtask.Key[1] - 150))
-                    {
-
-
-
-
-
-                        Console.WriteLine("horiz perfect: " + startHours + " to " + endHours);
-                        correctHorizPoints++;
-
-                    }
-                    else
-                    {
-                        //Console.WriteLine("transition: " + endHours + " - 60 to  " + endHours + " + 60");
-                    }
-                }
+                // Vertical and Horizontal test
+    
+                //correctVertPoints += verticalTest(startSecs, endSecs, GTtask.Value);
+                //correctHorizPoints += horizTest(startSecs, endSecs);
             }
-
-            foreach(KeyValuePair<int,List<int>> GTnum in taskMatchingDict)
-            {
-                List<int> outputs = GTnum.Value;
-                foreach(int output in outputs)
-                {
-                    Console.WriteLine(GTnum.Key + " : " + output);
-                }
-            }
+            matchGtToOutput();
 
 
-            float horizontalAccuracy = correctHorizPoints / correctData.Count;
-            float verticalAccuracy = correctVertPoints / correctData.Count;
-            results[0] = horizontalAccuracy;
-            results[1] = verticalAccuracy;
+            //float horizontalAccuracy = correctHorizPoints / correctData.Count;
+            //float verticalAccuracy = correctVertPoints / correctData.Count;
+            //results[0] = horizontalAccuracy;
+            //results[1] = verticalAccuracy;
+
+            results[0] = taskAssociationTest(GTtaskMatchingDict);
+            results[1] = taskAssociationTest(outputTaskMatchingDict);
             return results;
         }
 
+        private void print(Dictionary<int, Dictionary<int, int>> dict)
+        {
+            foreach(KeyValuePair<int,Dictionary<int,int>> entry in dict)
+            {
+                
+                foreach(KeyValuePair<int,int> corresp in entry.Value)
+                {
+                    Console.WriteLine(entry.Key + ": " + corresp.Key + " - " + corresp.Value + " times");
+                }
+            }
+        }
 
-        //private double taskAssociationTest()
-        //{
-        //    taskMatchingDict
-        //}
+
+        private void matchGtToOutput()
+        {
+            foreach(Task task in tasks)
+            {
+                int outputTaskNum = mostCommonTaskNumInGT(task.getStartTime(), task.getEndTime()); // Most common task number in GT within the interval of task
+
+                if (outputTaskMatchingDict.ContainsKey(task.getTaskNum()))
+                {
+                    addToDict(outputTaskMatchingDict[task.getTaskNum()], outputTaskNum);
+                }
+                else
+                {
+                    outputTaskMatchingDict.Add(task.getTaskNum(), new Dictionary<int, int> { { outputTaskNum, 1 } });
+                }
+            }
+        }
+
+        private void addToDict(Dictionary<int,int> dict,int toAdd)
+        {
+            if (dict.ContainsKey(toAdd))
+            {
+                dict[toAdd] = dict[toAdd] + 1;
+               
+            }
+            else
+            {
+                dict.Add(toAdd, 1);
+            }
+        }
+
+        private float taskAssociationTest(Dictionary<int, Dictionary<int, int>>  dict)
+        {
+            float correctPoints = 0;
+            float total = 0;
+            foreach (KeyValuePair<int,Dictionary<int,int>> task in dict)
+            {
+                int max = 0;
+                
+                foreach(KeyValuePair<int,int> correspondingTaskNums in task.Value)
+                {
+                    total += correspondingTaskNums.Value;
+                    if(correspondingTaskNums.Value >= max)
+                    {
+                        max = correspondingTaskNums.Value;
+                    }
+                }
+                correctPoints += max;
+            }
+
+            float ans = correctPoints / total;
+            return ans;
+
+        }
 
         /// <summary>
         /// Returns whether or not the segment from startTime to endTime in 
@@ -170,7 +185,6 @@ namespace TaskSummarization
         /// <returns></returns>
         private Task getTaskAtTime(int startTime, int endTime)
         {
-
             foreach (Task task in tasks)
             {
                 if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
@@ -181,7 +195,46 @@ namespace TaskSummarization
             return null; // transition period
         }
 
-        private int mostCommonTaskNum(int GTStartTime, int GTEndTime)
+        private int mostCommonTaskNumInGT(int outputStartTime, int outputEndTime)
+        {
+            int mostCommon = -1;
+            int currentMax = 0;
+            foreach (KeyValuePair<int[],int> GTtask in correctData)
+            {
+                int GTStartTime = GTtask.Key[0];
+                int GTputEndTime = GTtask.Key[1];
+                int numTimeBlocks = 0;
+
+                if (GTStartTime >= outputStartTime && GTputEndTime <= outputEndTime) // GT block is within output
+                {
+                    numTimeBlocks = (GTputEndTime - GTStartTime) / numSecs;
+
+                }
+                else if (GTStartTime >= outputStartTime && GTStartTime <= outputEndTime) // GT block begins in output and ends after it
+                {
+                    numTimeBlocks = (outputEndTime - GTStartTime) / numSecs;
+
+                }
+                else if (GTputEndTime >= outputStartTime && GTputEndTime <= outputEndTime) // GT block begins before output and ends inside of it
+                {
+                    numTimeBlocks = (GTputEndTime - outputStartTime) / numSecs;
+
+                }
+                else if (GTStartTime <= outputStartTime && GTputEndTime >= outputEndTime) // GT block begins before output and ends after it
+                {
+                    numTimeBlocks = (outputEndTime - outputStartTime) / numSecs;
+                }
+
+                if (numTimeBlocks > currentMax)
+                {
+                    currentMax = numTimeBlocks;
+                    mostCommon = GTtask.Value;
+                }
+            }
+            return mostCommon;
+        }
+
+        private int mostCommonTaskNumInOutput(int GTStartTime, int GTEndTime)
         {
             int mostCommon = -1;
             int currentMax = 0;
@@ -209,31 +262,16 @@ namespace TaskSummarization
                 }
                    
                 if (numTimeBlocks > currentMax)
-                {
-                        
+                {                        
                     currentMax = numTimeBlocks;
                     mostCommon = task.getTaskNum();
-                }
-                   
+                }                   
             }
-
-            Console.WriteLine("return: " + mostCommon);
             return mostCommon;
         }
 
-
-
-        private void taskMatching(Dictionary<int, List<KeyValuePair<int[], int>>> correctDict, Dictionary<int, List<Task>> outputDict)
-        {
-            // take one item from correect dict
-            //
-            
-        }
-
-
         private bool isHomogeneous(int startTime, int endTime)
         {
-
             foreach (Task task in tasks)
             {
                 if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
@@ -242,106 +280,37 @@ namespace TaskSummarization
                 }
             }
             return false; // transition period
-
         }
 
-
-        /// <summary>
-        /// Returns whether or not the segment from startTime to endTime in 
-        /// the correct data is homogenous (comprised of a single task)
-        /// </summary>
-        /// <param name="startTime"></param>
-        /// <param name="endTime"></param>
-        /// <returns></returns>
-        //private bool isHomogeneous(int startTime, int endTime)
-        //{
-
-        //    for (int i = 0; i < correctData.Count; i++)
-        //    {
-        //        if (startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
-        //        {
-        //            return true;
-        //        }
-        //    }
-        //    return false;
-        //}
-
-        ///// <summary>
-        ///// Tests the algorithm
-        ///// </summary>
-        ///// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
-        //public float test()
-        //{
-        //    float[] results = new float[2]; 
-        //    float correctHorizPoints = 0;
-
-        //    foreach (Task task in tasks)
-        //    {
-        //        int startSecs = task.getStartTime();
-        //        TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
-        //        string startHours = startTime.ToString(@"hh\:mm\:ss");
-
-        //        int endSecs = task.getEndTime();
-        //        TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
-        //        string endHours = endTime.ToString(@"hh\:mm\:ss");
-
-        //        if (isHomogeneous(startSecs, endSecs))
-        //        {
-        //            if(summarizer.similarTasks(task,GroundTruthDescriptions[getCorrectTaskNum(startSecs, endSecs)], 0.3))
-        //            {
-        //                correctHorizPoints++;
-        //                //Console.WriteLine("correct from: " + startHours + " to " + endHours);
-        //            } else
-        //            {
-        //                //Console.WriteLine("wrong from: " + startHours + " to " + endHours + " cosine" );
-        //            }
-
-
-        //        } else
-        //        {
-        //            //Console.WriteLine("wrong from: " + startHours + " to " + endHours + " homo");
-        //        }
-        //    }
-        //    float horizontalAccracy = correctHorizPoints / tasks.Count;
-        //    results[0] = horizontalAccracy;
-        //    return horizontalAccracy;
-        //}
-
-
-        ///// <summary>
-        ///// Returns whether or not the segment from startTime to endTime in 
-        ///// the correct data is homogenous (comprised of a single task)
-        ///// </summary>
-        ///// <param name="startTime"></param>
-        ///// <param name="endTime"></param>
-        ///// <returns></returns>
-        //private bool isHomogeneous(int startTime, int endTime)
-        //{
-
-        //    for(int i = 0; i < correctData.Count; i++)
-        //    {
-        //        if(startTime >= correctData[i].Key[0] && endTime <= correctData[i].Key[1])
-        //        {
-        //            return true;
-        //        }
-        //    }
-        //    return false;
-        //}
-
-
-
-        private Task getTaskNum(int startTime, int endTime)
+        private int verticalTest(int startSecs, int endSecs, int taskNum)
         {
-
-            foreach (Task task in tasks)
+            int points = 0;
+            if (isHomogeneous(startSecs + 150, endSecs - 150))
             {
-                if (startTime >= task.getStartTime() && endTime <= task.getEndTime())
+                if (summarizer.similarTasks(getTaskAtTime(startSecs + 150, endSecs - 150), GroundTruthDescriptions[taskNum], 0.3))
                 {
-                    return task;
+                    points = 1;
                 }
             }
-            return null; // transition period
+            return points;
         }
+
+        private int horizTest(int startSecs, int endSecs)
+        {
+            int points = 0;
+            if (!isHomogeneous(endSecs - 150, endSecs + 150) && !isHomogeneous(startSecs - 150, startSecs + 150)) // within 5 minutes
+            {
+                if (isHomogeneous(startSecs + 150, endSecs - 150))
+                {
+                    points = 1;
+                }
+            }
+            return points;
+        }
+
+
+
+        #region input/output
 
 
         /// <summary>
@@ -394,6 +363,8 @@ namespace TaskSummarization
 
             return truth;
         }
+
+
 
         /// <summary>
         /// Fetches testing data
@@ -562,5 +533,9 @@ namespace TaskSummarization
             this.GroundTruthDescriptions.Add(5, task5);
             this.GroundTruthDescriptions.Add(6, task6);
         }
+
+        #endregion
     }
+
+
 }

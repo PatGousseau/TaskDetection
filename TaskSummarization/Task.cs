@@ -21,8 +21,6 @@ namespace TaskSummarization
         double[] aveVector;
         private int startTime;
         private int endTime;
-
-
         private double topPercentile;
         private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\GoogleNews-vectors-negative300-SLIM.bin\GoogleNews-vectors-negative300-SLIM.bin";
        // private string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\SO_vectors_200.bin";
@@ -32,9 +30,7 @@ namespace TaskSummarization
             this.topPercentile = topPercentile;
             createBagOfWords(windowTitles);
             createAverageVector();
-
         }
-
 
         /// <summary>
         /// Creates and initalizes average word2vec vector for task
@@ -61,8 +57,7 @@ namespace TaskSummarization
                 }
                 catch
                 {
-                    // Do nothing for unkown words
-                    
+                    // Do nothing for unkown words                   
                 }
             }
 
@@ -71,8 +66,7 @@ namespace TaskSummarization
             {
                 vector[i] /= numTokens;
             }
-            this.aveVector = vector;
-          
+            this.aveVector = vector;         
         }
 
         /// <summary>
@@ -82,7 +76,6 @@ namespace TaskSummarization
         /// <returns></returns>
         public void collapseTasks(Task newBag, int secondsToAdd)
         {
-
             Dictionary<string, int> toAdd = newBag.getBag();
             foreach (KeyValuePair<string, int> token in toAdd)
             {
@@ -107,7 +100,6 @@ namespace TaskSummarization
         /// <returns></returns>
         public void createBagOfWords(List<string> data)
         {
-
             List<List<string>> cleanedData = clean(data);
             this.bag = new Dictionary<string, int>();
 
@@ -151,8 +143,6 @@ namespace TaskSummarization
             return cleanedText;
         }
 
-
-
         /// <summary>
         /// Removes non English words and splits camel case words
         /// </summary>
@@ -161,15 +151,11 @@ namespace TaskSummarization
         private List<string> removeNonEnglishWords(string[] words)
         {
             EnglishStemmer stemmer = new EnglishStemmer();
-
-   
-
             Hunspell hunspell = new Hunspell(@"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.aff", @"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.dic");
             List<string> englishWords = new List<string>();
 
             foreach (string word in words)
             {
-
                 string camelCase = Regex.Replace(Regex.Replace(word, @"(\P{Ll})(\P{Ll}\p{Ll})", "$1 $2"), @"(\p{Ll})(\P{Ll})", "$1 $2"); // Splits camel case token into seperate words
                 string[] tokens = camelCase.Split(' ');
                 foreach (string token in tokens)
@@ -178,12 +164,7 @@ namespace TaskSummarization
                     {
                         if (hunspell.Spell(token) && !Regex.IsMatch(token, @"^\d+$")) // If word is a correct English word
                         {
-                            //Console.WriteLine("word: " + token);
-                            englishWords.Add(token.ToLower());// stemmer.Stem(word)); // Add the stem of the word
-                        }
-                        else
-                        {
-                              //C//onsole.WriteLine("not a word: " + token);
+                            englishWords.Add(token.ToLower());
                         }
                     }
                 }
@@ -202,15 +183,12 @@ namespace TaskSummarization
             MLContext context = new MLContext();
             var emptyData = new List<TextData>();
             var data = context.Data.LoadFromEnumerable(emptyData);
-
             var tokenization = context.Transforms.Text.TokenizeIntoWords("Tokens", "Text", separators: new[] { ' ', ',', '-', '_','.',':' })
                 .Append(context.Transforms.Text.RemoveDefaultStopWords("Tokens", "Tokens",
                     Microsoft.ML.Transforms.Text.StopWordsRemovingEstimator.Language.English));
 
             var stopWordsModel = tokenization.Fit(data);
-
             var engine = context.Model.CreatePredictionEngine<TextData, TextTokens>(stopWordsModel);
-
             var newText = engine.Predict(new TextData { Text = text });
 
             return newText.Tokens;
@@ -225,11 +203,8 @@ namespace TaskSummarization
         public void removeInfrequentWords()
         {
             var importantWords = bag.ToList();
-
             importantWords.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
-
             int upperBound = (int)(importantWords.Count * (1 - topPercentile));
-
             importantWords.RemoveRange(0, upperBound);
             this.bag = importantWords.ToDictionary(x => x.Key, x => x.Value);
 
@@ -276,7 +251,6 @@ namespace TaskSummarization
             return this.endTime;
         }
         #endregion
-
 
         private class TextData
         {
