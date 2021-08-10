@@ -30,6 +30,6 @@ As you hover over the timeline, it displays the time, duration and the tokens th
 ## Possible Applications
 
 - Help with filling out timesheets / automatically filling out timesheets
-- Automatically check off items on a to-do list based off the tasks detected
+- Automatically check off items on a to-do list based on the tasks detected
 - User may analyze their productivity over the course of a day
     
