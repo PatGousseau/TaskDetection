@@ -2,10 +2,15 @@
 
 ## Overview
 
- This project uses Natural Language Processing (NLP) and Word2Vec to automatically detect task switches in real-time. Added this project as a feature on 
+ This project uses Natural Language Processing (NLP) and Word2Vec to automatically detect task switches in real-time. This project is a feature on 
 [Personal Analytics](https://pluto.ifi.uzh.ch/PersonalAnalytics/), a productivity application initiated by the University of Zurich.
-This project was completed under the supervision of Dr. Gail C. Murphy, University of British Columbia, and Dr. Thomas Fritz, University of Zurich.
+This project was completed under the supervision of Dr. Gail C. Murphy, University of British Columbia, and Dr. Thomas Fritz, University of Zurich. 
 
+The following is a screenshot of the visualization of the program:
+
+![alt text](Widget.png)
+
+As you hover over the timeline, it displays the time, duration and the tokens that represent the task worked on. 
 
 ## Description of Algorithm
 
@@ -22,4 +27,8 @@ This project was completed under the supervision of Dr. Gail C. Murphy, Universi
 - Add a feature that allows the user to choose how many words to include for the description of each tasks
 
 ## Possible Applications
+
+- Help with filling out timesheets / automatically filling out timesheets
+- Automatically check off items on a to-do list based off the tasks detected
+- User may analyze their productivity over the course of a day
     
