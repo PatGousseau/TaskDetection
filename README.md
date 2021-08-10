@@ -23,8 +23,9 @@ As you hover over the timeline, it displays the time, duration and the tokens th
 
 ## Further Improvements
 
-- Consider the duration of the windows used by the user. Adding more importance to those worked on for a longer period of time
+- Consider the duration of the windows used by the user. Add more importance to those worked on for a longer period of time
 - Add a feature that allows the user to choose how many words to include for the description of each tasks
+- Connect the project to a to-do list, which the user fills out. The program can then scratch items off of the list as they complete tasks throughout the day.
 
 ## Possible Applications
 
