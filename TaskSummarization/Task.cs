@@ -1,14 +1,9 @@
 ﻿using Accord.Math;
-using Iveonik.Stemmers;
 using Microsoft.ML;
 using NHunspell;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-
-
 
 namespace TaskSummarization
 
@@ -135,11 +130,13 @@ namespace TaskSummarization
             foreach (string windowTitle in data)
             {
                 // Tokenize, remove stop words and remove non english words
-                List<string> cleanedWindowTitle = removeNonEnglishWords(tokenize(windowTitle)); // List of tokens based off the window title
-                cleanedText.Add(cleanedWindowTitle);
-
+                string[] temp = tokenize(windowTitle);
+                if (temp != null)
+                {
+                    List<string> cleanedWindowTitle = removeNonEnglishWords(tokenize(windowTitle)); // List of tokens based off the window title
+                    cleanedText.Add(cleanedWindowTitle);
+                }
             }
-
             return cleanedText;
         }
 
@@ -150,21 +147,24 @@ namespace TaskSummarization
         /// <returns></returns>
         private List<string> removeNonEnglishWords(string[] words)
         {
-            EnglishStemmer stemmer = new EnglishStemmer();
+                       
+           // EnglishStemmer stemmer = new EnglishStemmer();
             Hunspell hunspell = new Hunspell(@"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.aff", @"C:\Users\pcgou\source\repos\TaskSummarization\TaskSummarization\bin\x64\Debug\en_us.dic");
             List<string> englishWords = new List<string>();
-
-            foreach (string word in words)
+            if (words.Length > 0)
             {
-                string camelCase = Regex.Replace(Regex.Replace(word, @"(\P{Ll})(\P{Ll}\p{Ll})", "$1 $2"), @"(\p{Ll})(\P{Ll})", "$1 $2"); // Splits camel case token into seperate words
-                string[] tokens = camelCase.Split(' ');
-                foreach (string token in tokens)
+                foreach (string word in words)
                 {
-                    if (!Regex.IsMatch(token.ToLower(), "google") && !Regex.IsMatch(token.ToLower(), "search") && !Regex.IsMatch(token.ToLower(), "com") && !Regex.IsMatch(token.ToLower(), "ca")) // remove google search *temporary*
+                    string camelCase = Regex.Replace(Regex.Replace(word, @"(\P{Ll})(\P{Ll}\p{Ll})", "$1 $2"), @"(\p{Ll})(\P{Ll})", "$1 $2"); // Splits camel case token into seperate words
+                    string[] tokens = camelCase.Split(' ');
+                    foreach (string token in tokens)
                     {
-                        if (hunspell.Spell(token) && !Regex.IsMatch(token, @"^\d+$")) // If word is a correct English word
+                        if (!Regex.IsMatch(token.ToLower(), "google") && !Regex.IsMatch(token.ToLower(), "search") && !Regex.IsMatch(token.ToLower(), "com") && !Regex.IsMatch(token.ToLower(), "ca")) // remove google search *temporary*
                         {
-                            englishWords.Add(token.ToLower());
+                            if (hunspell.Spell(token) && !Regex.IsMatch(token, @"^\d+$")) // If word is a correct English word
+                            {
+                                englishWords.Add(token.ToLower());
+                            }
                         }
                     }
                 }

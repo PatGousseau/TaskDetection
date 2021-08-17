@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 
-
 namespace TaskSummarization
 {
     class Tester
     {
-
         private int numSecs;
         private double topPercentile;
         private double similarityThreshold;
@@ -16,9 +14,8 @@ namespace TaskSummarization
         private Summarizer summarizer;
         private List<Task> tasks;
         private List<Task> groundTruthTasks;
-        private Dictionary<int, Dictionary<int,int>> GTtaskMatchingDict;
+        private Dictionary<int, Dictionary<int, int>> GTtaskMatchingDict;
         private Dictionary<int, Dictionary<int, int>> outputTaskMatchingDict;
-        
 
         public Tester(int numSecs, double topPercentile, double similarityThreshold, string participant)
         {
@@ -29,32 +26,26 @@ namespace TaskSummarization
             GTtaskMatchingDict = new Dictionary<int, Dictionary<int, int>>();
             outputTaskMatchingDict = new Dictionary<int, Dictionary<int, int>>();
             this.groundTruthTasks = new List<Task>();
-
             initializeSummarizer();
-
             this.tasks = summarizer.getTasks();
             getGroundTruthData();
         }
 
         /// <summary>
-        /// Runs the algorithm
+        /// Runs the task switch detectinon algorithm
         /// </summary>
         /// <returns></returns>
         private void initializeSummarizer()
         {
-
-            List<List<string>> data =     getInputData(numSecs); //getPersonalInputData(numSecs);
-            this.summarizer = new Summarizer(numSecs,similarityThreshold);
+            List<List<string>> data = getPersonalInputData(numSecs);  // getInputData(numSecs); //
+            this.summarizer = new Summarizer(numSecs, similarityThreshold);
 
             foreach (List<string> titles in data)
             {
                 Task task = new Task(titles, topPercentile);
-               
                 summarizer.addTask(task);
-
             }
             summarizer.printData();
-
         }
 
         /// <summary>
@@ -63,67 +54,49 @@ namespace TaskSummarization
         /// <returns>float[] - First item: horizontal metric, Second item: vertical metric</returns>
         public float[] test()
         {
-            float[] results = new float[2];
+            float[] results = new float[4];
             float correctHorizPoints = 0;
             float correctVertPoints = 0;
-          
+
             foreach (Task GTtask in groundTruthTasks)
             {
                 int startSecs = GTtask.getStartTime();
-                TimeSpan startTime = TimeSpan.FromSeconds(startSecs);
-                string startHours = startTime.ToString(@"hh\:mm\:ss");
-
                 int endSecs = GTtask.getEndTime();
-                TimeSpan endTime = TimeSpan.FromSeconds(endSecs);
-                string endHours = endTime.ToString(@"hh\:mm\:ss");
-
 
                 // Populate GTtaskMatchingDict
-
                 int outputTaskNum = mostCommonTaskNumInInterval(startSecs, endSecs, tasks); // Most common task number in the output within the interval of GTtask
 
-                if(GTtaskMatchingDict.ContainsKey(GTtask.getTaskNum()))
+                if (GTtaskMatchingDict.ContainsKey(GTtask.getTaskNum()))
                 {
-                    addToDict(GTtaskMatchingDict[GTtask.getTaskNum()],outputTaskNum);
-                } else
+                    addToDict(GTtaskMatchingDict[GTtask.getTaskNum()], outputTaskNum);
+                }
+                else
                 {
                     GTtaskMatchingDict.Add(GTtask.getTaskNum(), new Dictionary<int, int> { { outputTaskNum, 1 } });
                 }
 
                 // Vertical and Horizontal test
-    
-                //correctVertPoints += verticalTest(startSecs, endSecs, GTtask.Value);
-                //correctHorizPoints += horizTest(startSecs, endSecs);
+                correctVertPoints += verticalTest(startSecs, endSecs, GTtask);
+                correctHorizPoints += horizTest(startSecs, endSecs);
             }
             matchGtToOutput();
 
-
-            //float horizontalAccuracy = correctHorizPoints / correctData.Count;
-            //float verticalAccuracy = correctVertPoints / correctData.Count;
-            //results[0] = horizontalAccuracy;
-            //results[1] = verticalAccuracy;
-
-            results[0] = taskAssociationTest(GTtaskMatchingDict);
-            results[1] = taskAssociationTest(outputTaskMatchingDict);
+            float horizontalAccuracy = correctHorizPoints / groundTruthTasks.Count;
+            float verticalAccuracy = correctVertPoints / groundTruthTasks.Count;
+            results[0] = horizontalAccuracy;
+            results[1] = verticalAccuracy;
+            results[2] = taskAssociationTest(GTtaskMatchingDict);
+            results[3] = taskAssociationTest(outputTaskMatchingDict);
             return results;
         }
 
-        private void print(Dictionary<int, Dictionary<int, int>> dict)
-        {
-            foreach(KeyValuePair<int,Dictionary<int,int>> entry in dict)
-            {
-                
-                foreach(KeyValuePair<int,int> corresp in entry.Value)
-                {
-                    Console.WriteLine(entry.Key + ": " + corresp.Key + " - " + corresp.Value + " times");
-                }
-            }
-        }
-
-
+        /// <summary>
+        /// For each output segment, determines the corresponding task number in the GT
+        /// </summary>
+        /// <returns></returns>
         private void matchGtToOutput()
         {
-            foreach(Task task in tasks)
+            foreach (Task task in tasks)
             {
                 int outputTaskNum = mostCommonTaskNumInInterval(task.getStartTime(), task.getEndTime(), groundTruthTasks); // Most common task number in GT within the interval of task
 
@@ -138,12 +111,15 @@ namespace TaskSummarization
             }
         }
 
-        private void addToDict(Dictionary<int,int> dict,int toAdd)
+        /// <summary>
+        /// Adds integer value to given dictionary
+        /// </summary>
+        /// <returns></returns>
+        private void addToDict(Dictionary<int, int> dict, int toAdd)
         {
             if (dict.ContainsKey(toAdd))
             {
                 dict[toAdd] = dict[toAdd] + 1;
-               
             }
             else
             {
@@ -151,18 +127,22 @@ namespace TaskSummarization
             }
         }
 
-        private float taskAssociationTest(Dictionary<int, Dictionary<int, int>>  dict)
+        /// <summary>
+        /// Tests if the algorithm can detect reocurring tasks
+        /// </summary>
+        /// <returns></returns>
+        private float taskAssociationTest(Dictionary<int, Dictionary<int, int>> dict)
         {
             float correctPoints = 0;
             float total = 0;
-            foreach (KeyValuePair<int,Dictionary<int,int>> task in dict)
+            foreach (KeyValuePair<int, Dictionary<int, int>> task in dict)
             {
                 int max = 0;
-                
-                foreach(KeyValuePair<int,int> correspondingTaskNums in task.Value)
+
+                foreach (KeyValuePair<int, int> correspondingTaskNums in task.Value)
                 {
                     total += correspondingTaskNums.Value;
-                    if(correspondingTaskNums.Value >= max)
+                    if (correspondingTaskNums.Value >= max)
                     {
                         max = correspondingTaskNums.Value;
                     }
@@ -176,8 +156,7 @@ namespace TaskSummarization
         }
 
         /// <summary>
-        /// Returns whether or not the segment from startTime to endTime in 
-        /// the correct data is homogenous (comprised of a single task)
+        /// Returns the task that occurs in the given interval
         /// </summary>
         /// <param name="startTime"></param>
         /// <param name="endTime"></param>
@@ -194,46 +173,15 @@ namespace TaskSummarization
             return null; // transition period
         }
 
-        //private int mostCommonTaskNumInGT(int outputStartTime, int outputEndTime)
-        //{
-        //    int mostCommon = -1;
-        //    int currentMax = 0;
-        //    foreach (KeyValuePair<int[],int> GTtask in correctData)
-        //    {
-        //        int GTStartTime = GTtask.Key[0];
-        //        int GTputEndTime = GTtask.Key[1];
-        //        int numTimeBlocks = 0;
 
-        //        if (GTStartTime >= outputStartTime && GTputEndTime <= outputEndTime) // GT block is within output
-        //        {
-        //            numTimeBlocks = (GTputEndTime - GTStartTime) / numSecs;
-
-        //        }
-        //        else if (GTStartTime >= outputStartTime && GTStartTime <= outputEndTime) // GT block begins in output and ends after it
-        //        {
-        //            numTimeBlocks = (outputEndTime - GTStartTime) / numSecs;
-
-        //        }
-        //        else if (GTputEndTime >= outputStartTime && GTputEndTime <= outputEndTime) // GT block begins before output and ends inside of it
-        //        {
-        //            numTimeBlocks = (GTputEndTime - outputStartTime) / numSecs;
-
-        //        }
-        //        else if (GTStartTime <= outputStartTime && GTputEndTime >= outputEndTime) // GT block begins before output and ends after it
-        //        {
-        //            numTimeBlocks = (outputEndTime - outputStartTime) / numSecs;
-        //        }
-
-        //        if (numTimeBlocks > currentMax)
-        //        {
-        //            currentMax = numTimeBlocks;
-        //            mostCommon = GTtask.Value;
-        //        }
-        //    }
-        //    return mostCommon;
-        //}
-
-        private int mostCommonTaskNumInInterval(int GTStartTime, int GTEndTime, List<Task> taskList)
+        /// <summary>
+        /// Returns the most common task number in the given interval
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// /// <param name="taskList"></param>
+        /// <returns></returns>
+        private int mostCommonTaskNumInInterval(int startTime, int endTime, List<Task> taskList)
         {
             int mostCommon = -1;
             int currentMax = 0;
@@ -243,32 +191,41 @@ namespace TaskSummarization
                 int outputEndTime = task.getEndTime();
                 int numTimeBlocks = 0;
 
-                if(outputStartTime >= GTStartTime && outputEndTime <= GTEndTime) // ouput block is within GT
+                if (outputStartTime >= startTime && outputEndTime <= endTime) // ouput block is within GT
                 {
                     numTimeBlocks = (outputEndTime - outputStartTime) / numSecs;
 
-                } else if (outputStartTime >= GTStartTime && outputStartTime <= GTEndTime) // output block begins in GT and ends after it
-                {
-                    numTimeBlocks = (GTEndTime - outputStartTime) / numSecs;
-
-                } else if (outputEndTime >= GTStartTime && outputEndTime <= GTEndTime) // output block begins before GT and ends inside of it
-                {
-                    numTimeBlocks = (outputEndTime - GTStartTime) / numSecs;
-
-                } else if(outputStartTime <= GTStartTime && outputEndTime >= GTEndTime) // output block begins before GT and ends after it
-                {
-                    numTimeBlocks = (GTEndTime - GTStartTime) / numSecs;
                 }
-                   
+                else if (outputStartTime >= startTime && outputStartTime <= endTime) // output block begins in GT and ends after it
+                {
+                    numTimeBlocks = (endTime - outputStartTime) / numSecs;
+
+                }
+                else if (outputEndTime >= startTime && outputEndTime <= endTime) // output block begins before GT and ends inside of it
+                {
+                    numTimeBlocks = (outputEndTime - startTime) / numSecs;
+
+                }
+                else if (outputStartTime <= startTime && outputEndTime >= endTime) // output block begins before GT and ends after it
+                {
+                    numTimeBlocks = (endTime - startTime) / numSecs;
+                }
+
                 if (numTimeBlocks > currentMax)
-                {                        
+                {
                     currentMax = numTimeBlocks;
                     mostCommon = task.getTaskNum();
-                }                   
+                }
             }
             return mostCommon;
         }
 
+        /// <summary>
+        /// Returns whether or not there exists exactly one task in the given interval
+        /// </summary>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <returns></returns>
         private bool isHomogeneous(int startTime, int endTime)
         {
             foreach (Task task in tasks)
@@ -281,6 +238,13 @@ namespace TaskSummarization
             return false; // transition period
         }
 
+        /// <summary>
+        /// Test how accurate the output matches the content of the ground truth
+        /// </summary>
+        /// <param name="startSecs"></param>
+        /// <param name="endSecs"></param>
+        /// <param name="task"></param>
+        /// <returns></returns>
         private int verticalTest(int startSecs, int endSecs, Task task)
         {
             int points = 0;
@@ -294,6 +258,12 @@ namespace TaskSummarization
             return points;
         }
 
+        /// <summary>
+        /// Test how accurate the task switch times are in comparison to the ground truth
+        /// </summary>
+        /// <param name="startSecs"></param>
+        /// <param name="endSecs"></param>
+        /// <returns></returns>
         private int horizTest(int startSecs, int endSecs)
         {
             int points = 0;
@@ -307,10 +277,7 @@ namespace TaskSummarization
             return points;
         }
 
-
-
         #region input/output
-
 
         /// <summary>
         /// Fetches ground truth data
@@ -321,18 +288,17 @@ namespace TaskSummarization
             string format = "g";
             var culture = CultureInfo.InvariantCulture;
             List<KeyValuePair<int[], int>> truth = new List<KeyValuePair<int[], int>>();
-            string path = @"c:\users\pcgou\onedrive\documents\ubcresearch\window_titles\";
-            path += participant;
-            path += @"\truth.txt";
-            //string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\PD\truth.txt";
+            // string path = @"c:\users\pcgou\onedrive\documents\ubcresearch\window_titles\";
+            // path += participant;
+            // path += @"\truth.txt";
+            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\A4\truth.txt";
             try
             {
                 string[] lines = File.ReadAllLines(path);
                 for (int i = 1; i < lines.Length; i++)
                 {
-                    
                     string[] items = lines[i].Split(',');
-                    Task newTask = new Task(getGTDescriptions(Convert.ToInt32(items[2])),1);
+                    Task newTask = new Task(getGTDescriptions(Convert.ToInt32(items[2])), 1);
                     TimeSpan start, end;
                     TimeSpan.TryParseExact(items[0], format, culture, TimeSpanStyles.AssumeNegative, out start);
                     TimeSpan.TryParseExact(items[1], format, culture, TimeSpanStyles.AssumeNegative, out end);
@@ -340,21 +306,11 @@ namespace TaskSummarization
                     newTask.setTaskNum(Convert.ToInt32(items[2]));
                     groundTruthTasks.Add(newTask);
                 }
-
             }
             catch (Exception e)
-            {                
+            {
                 Console.WriteLine(e.Message);
             }
-
-            //foreach (KeyValuePair<double, int> row in truth)
-            //{
-                
-
-            //    Console.WriteLine(row.Key + ": " + row.Value);
-
-            //}
-            //Console.ReadLine();
         }
 
         /// <summary>
@@ -364,13 +320,12 @@ namespace TaskSummarization
         /// <returns></returns>
         public List<List<string>> getInputData(int numSecs)
         {
-            
             double currentTime = 0;
             List<List<string>> titles = new List<List<string>>();
             string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\";
             path += participant;
             path += @"\appdata_fixed.csv";
-            
+
             try
             {
                 string[] lines = File.ReadAllLines(path);
@@ -383,11 +338,9 @@ namespace TaskSummarization
                     currentTime += duration;
                     int endBlock = (int)(currentTime / numSecs); // block of time in which the window title ended
 
-
                     //add the window title to all blocks of time it occured in 
                     for (int j = startBlock; j <= endBlock; j++)
                     {
-
                         if (j >= titles.Count) // if there is no block for this time window in the list
                         {
                             List<string> newBlock = new List<string>();
@@ -396,12 +349,10 @@ namespace TaskSummarization
                         }
                         else
                         {
-
                             titles[j].Add(items[3]);
                         }
                     }
                 }
-
             }
             catch (Exception e)
             {
@@ -409,32 +360,14 @@ namespace TaskSummarization
             }
 
             int seconds = numSecs;
-
-            //foreach (List<string> list in titles)
-            //{
-            //    TimeSpan time = TimeSpan.FromSeconds(seconds);
-            //    string hours = time.ToString(@"hh\:mm\:ss");
-
-            //    foreach (string token in list)
-            //    {
-            //        Console.WriteLine(token);
-
-            //    }
-            //    seconds += numSecs;
-            //    Console.WriteLine("---------------------------- " + hours);
-
-            //}
-
             return titles;
-
         }
 
         public List<List<string>> getPersonalInputData(int numSecs)
         {
-
             double currentTime = 0;
             List<List<string>> titles = new List<List<string>>();
-            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\PD\personal_data2.txt";
+            string path = @"C:\Users\pcgou\OneDrive\Documents\UBCResearch\window_titles\A4\data.txt";
 
             try
             {
@@ -448,11 +381,9 @@ namespace TaskSummarization
                     currentTime += duration;
                     int endBlock = (int)(currentTime / numSecs); // block of time in which the window title ended
 
-
                     //add the window title to all blocks of time it occured in 
                     for (int j = startBlock; j <= endBlock; j++)
                     {
-
                         if (j >= titles.Count) // if there is no block for this time window in the list
                         {
                             List<string> newBlock = new List<string>();
@@ -461,44 +392,21 @@ namespace TaskSummarization
                         }
                         else
                         {
-
                             titles[j].Add(items[3]);
                         }
                     }
                 }
-
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                
             }
 
-
-
-            //foreach (List<string> list in titles)
-            //{
-
-            //    foreach (string token in list)
-            //    {
-            //        Console.WriteLine(token);
-
-
-            //    }
-
-            //    Console.WriteLine("-------------------------------");
-
-            //}
-            //Console.ReadLine();
-
             return titles;
-
         }
 
-
-
         /// <summary>
-        /// Initalizes GroundTruthDescriptions
+        /// Returns task description corresponding to the task number
         /// </summary>
         /// <returns></returns>
         private List<string> getGTDescriptions(int taskNum)
@@ -524,6 +432,4 @@ namespace TaskSummarization
 
         #endregion
     }
-
-
 }
