@@ -10,7 +10,7 @@ The following is a screenshot of the visualization of the program:
 
 ![alt text](Widget.png)
 
-As you hover over the timeline, it displays the time, duration and the tokens that represent the task worked on. 
+As you hover over the timeline, it displays the time at which the task began and ended as well as the duration and the tokens that represent the task worked on. In the above screenshot, I'm hovering my mouse over the larger dark purple task and can easily determine that from 13:44 to 13:58 I was reading the microsoft documentation for the DateTime Struct. Note that tasks of the same colour represents the same task.
 
 ## Description of Algorithm
 
